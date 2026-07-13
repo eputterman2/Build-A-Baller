@@ -31,6 +31,7 @@ const character = (
 
 const LOWEST = 0;
 const MARKET_DRAWING_IDS = new Set(MARKET_BUNDLES.map(bundle => bundle.drawingId));
+export const CUSTOM_CHARACTER_PREFIX = 'custom:';
 
 export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
   character('b1-top-left', 'Quickstep', [
@@ -429,11 +430,34 @@ export function getArchetypeCharacterById(id?: string | null): ArchetypeCharacte
   return ARCHETYPE_CHARACTER_RULES.find(rule => rule.id === id) ?? null;
 }
 
+export function isCustomCharacterId(id?: string | null): boolean {
+  return typeof id === 'string' && id.startsWith(CUSTOM_CHARACTER_PREFIX);
+}
+
+export function customCharacterRequestId(id: string): string {
+  return id.startsWith(CUSTOM_CHARACTER_PREFIX) ? id.slice(CUSTOM_CHARACTER_PREFIX.length) : id;
+}
+
+export function customCharacterId(requestId: string): string {
+  return `${CUSTOM_CHARACTER_PREFIX}${requestId}`;
+}
+
+export function customCharacterImageSrc(id: string): string {
+  return `/api/market/drawings/${encodeURIComponent(customCharacterRequestId(id))}/image`;
+}
+
 export function resolveArchetypeCharacter(
   result: ScoreResult,
   picks?: PickMap,
   characterId?: string | null,
 ): ArchetypeCharacter {
+  if (isCustomCharacterId(characterId)) {
+    return {
+      id: characterId!,
+      name: 'Custom Drawing',
+      src: customCharacterImageSrc(characterId!),
+    };
+  }
   const savedCharacter = getArchetypeCharacterById(characterId);
   if (savedCharacter && inCharacterOverallRange(savedCharacter, result.overall)) {
     return {

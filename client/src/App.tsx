@@ -9,6 +9,7 @@ import { PlayerOfDayWins } from './components/PlayerOfDayWins';
 import { ResetPassword } from './components/ResetPassword';
 import { Market } from './components/Market';
 import { Accessories } from './components/Accessories';
+import { AdminMarket } from './components/AdminMarket';
 
 export function App() {
   return (
@@ -23,6 +24,7 @@ export function App() {
           <Route path="/collection/player-of-day" element={<PlayerOfDayWins />} />
           <Route path="/collection/accessories" element={<Accessories />} />
           <Route path="/market" element={<Market />} />
+          <Route path="/admin/market" element={<AdminMarket />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/build/:id" element={<BuildPage />} />
           <Route path="*" element={<div className="notice">Page not found.</div>} />

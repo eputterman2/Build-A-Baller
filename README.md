@@ -111,6 +111,7 @@ See **[DEPLOY.md](DEPLOY.md)** for the full Google Cloud (Cloud Run + Cloud SQL)
 |---|---|---|
 | `DATABASE_URL` | prod | Postgres connection string. Omit in dev to use embedded Postgres. |
 | `JWT_SECRET` | prod | Long random string for signing tokens. |
+| `ADMIN_SECRET` | admin | Private code for `/admin/market`, where paid custom drawing requests are reviewed and fulfilled. |
 | `PORT` | no | Defaults 4000 (dev) / 8080 (container). |
 | `CLIENT_DIST` | prod | Path to the built client; set in the Dockerfile. |
 | `CLIENT_ORIGIN` | no | Dev CORS origin (default `http://localhost:5173`). |

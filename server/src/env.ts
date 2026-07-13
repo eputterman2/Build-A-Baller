@@ -9,6 +9,7 @@ export const config = {
   clientOrigin: process.env.CLIENT_ORIGIN || 'http://localhost:5173',
   resendApiKey: process.env.RESEND_API_KEY || '',
   feedbackFrom: process.env.FEEDBACK_FROM || 'Build-A-Baller <onboarding@resend.dev>',
+  adminSecret: process.env.ADMIN_SECRET || '',
   stripeSecretKey: process.env.STRIPE_SECRET_KEY || '',
   stripeWebhookSecret: process.env.STRIPE_WEBHOOK_SECRET || '',
   stripePrices: {

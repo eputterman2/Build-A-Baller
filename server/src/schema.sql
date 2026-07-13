@@ -93,11 +93,27 @@ CREATE TABLE IF NOT EXISTS market_drawing_requests (
   stripe_session_id TEXT NOT NULL DEFAULT '',
   status         TEXT NOT NULL DEFAULT 'pending_payment',
   paid_at        TIMESTAMPTZ,
+  admin_note     TEXT NOT NULL DEFAULT '',
+  final_name     TEXT NOT NULL DEFAULT '',
+  final_drawing_data_url TEXT NOT NULL DEFAULT '',
+  visibility     TEXT NOT NULL DEFAULT 'private',
+  min_overall    INTEGER NOT NULL DEFAULT 0,
+  max_overall    INTEGER NOT NULL DEFAULT 99,
+  build_hint     TEXT NOT NULL DEFAULT '',
+  fulfilled_at   TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS stripe_session_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS paid_at TIMESTAMPTZ;
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS admin_note TEXT NOT NULL DEFAULT '';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS final_name TEXT NOT NULL DEFAULT '';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS final_drawing_data_url TEXT NOT NULL DEFAULT '';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS visibility TEXT NOT NULL DEFAULT 'private';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS min_overall INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS max_overall INTEGER NOT NULL DEFAULT 99;
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS build_hint TEXT NOT NULL DEFAULT '';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS fulfilled_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS builds_overall_idx ON builds (overall DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS builds_rank_idx
@@ -110,6 +126,8 @@ CREATE INDEX IF NOT EXISTS poll_votes_poll_idx ON poll_votes (poll_id, option_id
 CREATE INDEX IF NOT EXISTS feedback_messages_created_idx ON feedback_messages (created_at DESC);
 CREATE INDEX IF NOT EXISTS market_drawing_requests_user_idx
   ON market_drawing_requests (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS market_drawing_requests_status_idx
+  ON market_drawing_requests (status, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS app_migrations (
   key        TEXT PRIMARY KEY,

@@ -4,7 +4,8 @@ import { z } from 'zod';
 import {
   ACCESSORIES_BY_ID, ARCHETYPE_CHARACTER_RULES, ATTRIBUTES, EMPTY_BUILD_ACCESSORIES,
   EMPTY_PLAYER_IDENTITY, MARKET_BUNDLES_BY_ID, PLAYERS_BY_ID,
-  buildRankMetrics, getArchetypeCharacterById, gradeFor, inCharacterOverallRange,
+  buildRankMetrics, customCharacterId, customCharacterImageSrc, customCharacterRequestId,
+  getArchetypeCharacterById, gradeFor, inCharacterOverallRange, isCustomCharacterId,
   normalizePlayerIdentity, scoreBuild, selectArchetypeCharacter,
   type AccessoryType, type AttributeKey, type BuildAccessories, type BuildDetail, type BuildSummary, type CollectionBuild, type PlayerOfDay,
   type DrawingCollectionLeader, type DrawingCollectionStats, type DrawingOption, type PlayerOfDayLeader, type PlayerOfDayWin, type PickMap, type RawValues, type ScoreResult,
@@ -84,6 +85,49 @@ async function getOwnedMarketDrawingIds(userId: string): Promise<Set<string>> {
   return drawingIds;
 }
 
+interface CustomDrawingRow {
+  id: string;
+  user_id: string;
+  final_name: string;
+  visibility: 'public' | 'private';
+  min_overall: number;
+  max_overall: number;
+  build_hint: string;
+}
+
+function isCustomDrawingEligible(row: CustomDrawingRow, overall: number): boolean {
+  return overall >= row.min_overall && overall <= row.max_overall;
+}
+
+async function getCompletedCustomDrawing(
+  requestId: string,
+  userId: string,
+): Promise<CustomDrawingRow | null> {
+  const result = await query<CustomDrawingRow>(
+    `SELECT id, user_id, final_name, visibility, min_overall, max_overall, build_hint
+     FROM market_drawing_requests
+     WHERE id = $1
+       AND status = 'fulfilled'
+       AND final_drawing_data_url <> ''
+       AND (visibility = 'public' OR user_id = $2)`,
+    [requestId, userId],
+  );
+  return result.rows[0] ?? null;
+}
+
+async function getAvailableCustomDrawings(userId: string): Promise<CustomDrawingRow[]> {
+  const result = await query<CustomDrawingRow>(
+    `SELECT id, user_id, final_name, visibility, min_overall, max_overall, build_hint
+     FROM market_drawing_requests
+     WHERE status = 'fulfilled'
+       AND final_drawing_data_url <> ''
+       AND (visibility = 'public' OR user_id = $1)
+     ORDER BY fulfilled_at DESC, created_at DESC`,
+    [userId],
+  );
+  return result.rows;
+}
+
 function cleanAccessoryId(id?: string): string {
   return typeof id === 'string' ? id.trim() : '';
 }
@@ -119,6 +163,7 @@ function characterIdForBuild(
   characterId?: string | null,
 ): string {
   const requested = typeof characterId === 'string' ? characterId.trim() : '';
+  if (isCustomCharacterId(requested)) return requested;
   const scoreResult = result as ScoreResult | undefined;
   const pickMap = picks as PickMap | undefined;
   if (requested && scoreResult) {
@@ -166,6 +211,17 @@ async function normalizeCharacterIdForBuild(
   const requested = typeof rawCharacterId === 'string' ? rawCharacterId.trim() : '';
   const current = typeof currentCharacterId === 'string' ? currentCharacterId.trim() : '';
   if (!requested) return { characterId: defaultCharacterId, error: null };
+
+  if (isCustomCharacterId(requested)) {
+    const custom = await getCompletedCustomDrawing(customCharacterRequestId(requested), userId);
+    if (!custom) {
+      return { characterId: defaultCharacterId, error: 'That custom drawing is not available on your account.' };
+    }
+    if (!isCustomDrawingEligible(custom, result.overall)) {
+      return { characterId: defaultCharacterId, error: 'That custom drawing is not eligible for this overall.' };
+    }
+    return { characterId: requested, error: null };
+  }
 
   const rule = getArchetypeCharacterById(requested);
   if (!rule) return { characterId: defaultCharacterId, error: 'That player drawing does not exist.' };
@@ -542,7 +598,10 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
       res.status(400).json({ error: 'Missing overall.' });
       return;
     }
-    const unlockedIds = await getUnlockedCharacterIds(req.user!.id);
+    const [unlockedIds, customDrawings] = await Promise.all([
+      getUnlockedCharacterIds(req.user!.id),
+      getAvailableCustomDrawings(req.user!.id),
+    ]);
     const options: DrawingOption[] = ARCHETYPE_CHARACTER_RULES
       .filter(rule => unlockedIds.has(rule.id) || rule.id === currentCharacterId)
       .map(rule => ({
@@ -555,6 +614,19 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
         eligible: inCharacterOverallRange(rule, overall),
         current: rule.id === currentCharacterId,
       }));
+    for (const drawing of customDrawings) {
+      const id = customCharacterId(drawing.id);
+      options.push({
+        id,
+        name: drawing.final_name || 'Custom Drawing',
+        src: customCharacterImageSrc(id),
+        minOverall: drawing.min_overall,
+        maxOverall: drawing.max_overall,
+        owned: true,
+        eligible: isCustomDrawingEligible(drawing, overall),
+        current: id === currentCharacterId,
+      });
+    }
     res.json({ options });
   } catch (err) { next(err); }
 });

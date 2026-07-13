@@ -129,10 +129,14 @@ export function DrawingCollection() {
             {customRequests.map(request => (
               <div className="drawing-collection-item custom-drawing-placeholder" key={request.id}>
                 <div className="custom-drawing-placeholder-art">
-                  <span>?</span>
+                  {request.finalDrawingSrc ? (
+                    <img src={request.finalDrawingSrc} alt="" />
+                  ) : (
+                    <span>?</span>
+                  )}
                 </div>
-                <b>{request.subject}</b>
-                <small>{request.status === 'paid' ? 'In review' : 'Payment processing'}</small>
+                <b>{request.finalName || request.subject}</b>
+                <small>{request.statusLabel}</small>
               </div>
             ))}
           </div>

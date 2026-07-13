@@ -41,14 +41,43 @@ interface MarketDrawingRequestInput {
 }
 export interface MarketDrawingRequest {
   id: string;
+  characterId: string;
+  userId?: string;
+  username?: string;
   type: 'pro-player' | 'photo-player';
   subject: string;
+  photoDataUrl?: string;
+  hasPhoto?: boolean;
   priceCents: number;
+  stripeSessionId?: string;
   status: string;
+  statusLabel: string;
+  paidAt?: string | null;
+  adminNote?: string;
+  finalName: string;
+  finalDrawingSrc: string;
+  visibility: 'public' | 'private';
+  minOverall: number;
+  maxOverall: number;
+  buildHint: string;
+  fulfilledAt?: string | null;
   createdAt: string;
+}
+interface AdminDrawingFulfillment {
+  finalName: string;
+  finalDrawingDataUrl: string;
+  visibility: 'public' | 'private';
+  minOverall: number;
+  maxOverall: number;
+  buildHint?: string;
+  adminNote?: string;
 }
 interface CheckoutResponse {
   checkoutUrl?: string;
+}
+
+function adminHeaders(secret: string): HeadersInit {
+  return { 'X-Admin-Secret': secret };
 }
 
 export const api = {
@@ -120,6 +149,22 @@ export const api = {
     }),
   drawingRequests: () =>
     req<{ requests: MarketDrawingRequest[] }>('/market/drawing-requests').then(d => d.requests),
+  adminDrawingRequests: (secret: string) =>
+    req<{ requests: MarketDrawingRequest[] }>('/market/admin/drawing-requests', {
+      headers: adminHeaders(secret),
+    }).then(d => d.requests),
+  adminUpdateDrawingRequestStatus: (secret: string, id: string, status: string, adminNote: string) =>
+    req<{ request: MarketDrawingRequest }>('/market/admin/drawing-requests/' + id + '/status', {
+      method: 'PATCH',
+      headers: adminHeaders(secret),
+      body: JSON.stringify({ status, adminNote }),
+    }).then(d => d.request),
+  adminFulfillDrawingRequest: (secret: string, id: string, fulfillment: AdminDrawingFulfillment) =>
+    req<{ request: MarketDrawingRequest }>('/market/admin/drawing-requests/' + id + '/fulfill', {
+      method: 'POST',
+      headers: adminHeaders(secret),
+      body: JSON.stringify(fulfillment),
+    }).then(d => d.request),
   accessories: () => req<AccessoriesResponse>('/market/accessories'),
   deleteBuild: (id: string) =>
     req<{ ok: true }>('/builds/' + id, { method: 'DELETE' }).then(d => d.ok),

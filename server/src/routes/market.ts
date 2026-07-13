@@ -1,9 +1,9 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
-import type { Request, RequestHandler } from 'express';
+import type { Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import {
-  ACCESSORIES, MARKET_BUNDLES, MARKET_BUNDLES_BY_ID,
+  ACCESSORIES, MARKET_BUNDLES, MARKET_BUNDLES_BY_ID, customCharacterId,
 } from '@shared/index';
 import { requireAuth } from '../auth';
 import { query } from '../db';
@@ -26,6 +26,97 @@ const drawingRequestSchema = z.object({
 });
 
 const PHOTO_DATA_URL_RE = /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/=]+$/i;
+
+const adminStatusSchema = z.object({
+  status: z.enum(['paid', 'in_review', 'in_progress', 'rejected']),
+  adminNote: z.string().trim().max(600).optional(),
+});
+
+const adminFulfillSchema = z.object({
+  finalName: z.string().trim().min(2).max(40),
+  finalDrawingDataUrl: z.string().max(5_500_000),
+  visibility: z.enum(['public', 'private']),
+  minOverall: z.number().int().min(0).max(99),
+  maxOverall: z.number().int().min(0).max(99),
+  buildHint: z.string().trim().max(80).optional(),
+  adminNote: z.string().trim().max(600).optional(),
+}).refine(data => data.minOverall <= data.maxOverall, {
+  message: 'Minimum overall must be lower than maximum overall.',
+  path: ['minOverall'],
+});
+
+interface DrawingRequestRow {
+  id: string;
+  user_id: string;
+  username: string;
+  request_type: string;
+  subject: string;
+  photo_data_url: string;
+  price_cents: number;
+  stripe_session_id: string;
+  status: string;
+  paid_at: string | null;
+  admin_note: string;
+  final_name: string;
+  final_drawing_data_url: string;
+  visibility: 'public' | 'private';
+  min_overall: number;
+  max_overall: number;
+  build_hint: string;
+  fulfilled_at: string | null;
+  created_at: string;
+}
+
+function requireAdmin(req: Request, res: Response): boolean {
+  if (!config.adminSecret) {
+    res.status(503).json({ error: 'Admin tools are not configured.' });
+    return false;
+  }
+  const supplied = req.get('x-admin-secret') || '';
+  if (supplied !== config.adminSecret) {
+    res.status(403).json({ error: 'Admin access required.' });
+    return false;
+  }
+  return true;
+}
+
+function requestStatusLabel(status: string): string {
+  if (status === 'paid') return 'In review';
+  if (status === 'in_review') return 'In review';
+  if (status === 'in_progress') return 'Drawing in progress';
+  if (status === 'fulfilled') return 'Ready';
+  if (status === 'rejected') return 'Rejected';
+  if (status === 'pending_checkout') return 'Payment processing';
+  return status.replace(/_/g, ' ');
+}
+
+function mapDrawingRequest(row: DrawingRequestRow, includePhoto = false) {
+  const completed = row.status === 'fulfilled' && Boolean(row.final_drawing_data_url);
+  return {
+    id: row.id,
+    characterId: customCharacterId(row.id),
+    userId: row.user_id,
+    username: row.username,
+    type: row.request_type,
+    subject: row.subject,
+    photoDataUrl: includePhoto ? row.photo_data_url : '',
+    hasPhoto: Boolean(row.photo_data_url),
+    priceCents: row.price_cents,
+    stripeSessionId: row.stripe_session_id,
+    status: row.status,
+    statusLabel: requestStatusLabel(row.status),
+    paidAt: row.paid_at,
+    adminNote: row.admin_note,
+    finalName: row.final_name,
+    finalDrawingSrc: completed ? `/api/market/drawings/${encodeURIComponent(row.id)}/image` : '',
+    visibility: row.visibility,
+    minOverall: row.min_overall,
+    maxOverall: row.max_overall,
+    buildHint: row.build_hint,
+    fulfilledAt: row.fulfilled_at,
+    createdAt: row.created_at,
+  };
+}
 
 function priceForDrawingRequest(type: DrawingRequestType): number {
   return type === 'pro-player' ? 500 : 1000;
@@ -188,30 +279,128 @@ marketRouter.get('/accessories', requireAuth, async (req, res, next) => {
 
 marketRouter.get('/drawing-requests', requireAuth, async (req, res, next) => {
   try {
-    const result = await query<{
-      id: string;
-      request_type: string;
-      subject: string;
-      price_cents: number;
-      status: string;
-      created_at: string;
-    }>(
-      `SELECT id, request_type, subject, price_cents, status, created_at
-       FROM market_drawing_requests
-       WHERE user_id = $1 AND status <> 'pending_payment'
+    const result = await query<DrawingRequestRow>(
+      `SELECT r.*, u.username
+       FROM market_drawing_requests r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.user_id = $1 AND r.status <> 'pending_payment'
        ORDER BY created_at DESC`,
       [req.user!.id],
     );
     res.json({
-      requests: result.rows.map(row => ({
-        id: row.id,
-        type: row.request_type,
-        subject: row.subject,
-        priceCents: row.price_cents,
-        status: row.status,
-        createdAt: row.created_at,
-      })),
+      requests: result.rows.map(row => mapDrawingRequest(row)),
     });
+  } catch (err) { next(err); }
+});
+
+marketRouter.get('/drawings/:id/image', async (req, res, next) => {
+  try {
+    const result = await query<{
+      final_drawing_data_url: string;
+    }>(
+      `SELECT final_drawing_data_url
+       FROM market_drawing_requests
+       WHERE id = $1 AND status = 'fulfilled' AND final_drawing_data_url <> ''`,
+      [req.params.id],
+    );
+    const dataUrl = result.rows[0]?.final_drawing_data_url;
+    if (!dataUrl || !PHOTO_DATA_URL_RE.test(dataUrl)) {
+      res.status(404).json({ error: 'Drawing not found' });
+      return;
+    }
+    const [meta, base64] = dataUrl.split(',');
+    const mime = meta.match(/^data:(image\/[^;]+);base64$/i)?.[1] || 'image/png';
+    res.setHeader('Content-Type', mime);
+    res.setHeader('Cache-Control', 'public, max-age=300');
+    res.end(Buffer.from(base64, 'base64'));
+  } catch (err) { next(err); }
+});
+
+marketRouter.get('/admin/drawing-requests', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const result = await query<DrawingRequestRow>(
+      `SELECT r.*, u.username
+       FROM market_drawing_requests r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.status <> 'pending_payment'
+       ORDER BY
+         CASE r.status
+           WHEN 'paid' THEN 0
+           WHEN 'in_review' THEN 1
+           WHEN 'in_progress' THEN 2
+           WHEN 'pending_checkout' THEN 3
+           WHEN 'fulfilled' THEN 4
+           WHEN 'rejected' THEN 5
+           ELSE 6
+         END,
+         r.created_at DESC
+       LIMIT 200`,
+    );
+    res.json({ requests: result.rows.map(row => mapDrawingRequest(row, true)) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.patch('/admin/drawing-requests/:id/status', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const { status, adminNote = '' } = adminStatusSchema.parse(req.body);
+    const result = await query<DrawingRequestRow>(
+      `UPDATE market_drawing_requests r
+       SET status = $1, admin_note = $2
+       FROM users u
+       WHERE r.id = $3 AND u.id = r.user_id AND r.status <> 'pending_payment'
+       RETURNING r.*, u.username`,
+      [status, adminNote, req.params.id],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      res.status(404).json({ error: 'Request not found' });
+      return;
+    }
+    res.json({ request: mapDrawingRequest(row, true) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.post('/admin/drawing-requests/:id/fulfill', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const data = adminFulfillSchema.parse(req.body);
+    if (!PHOTO_DATA_URL_RE.test(data.finalDrawingDataUrl)) {
+      res.status(400).json({ error: 'Upload a PNG, JPG, or WEBP drawing.' });
+      return;
+    }
+    const result = await query<DrawingRequestRow>(
+      `UPDATE market_drawing_requests r
+       SET status = 'fulfilled',
+           final_name = $1,
+           final_drawing_data_url = $2,
+           visibility = $3,
+           min_overall = $4,
+           max_overall = $5,
+           build_hint = $6,
+           admin_note = $7,
+           fulfilled_at = now()
+       FROM users u
+       WHERE r.id = $8 AND u.id = r.user_id AND r.status <> 'pending_payment'
+       RETURNING r.*, u.username`,
+      [
+        data.finalName,
+        data.finalDrawingDataUrl,
+        data.visibility,
+        data.minOverall,
+        data.maxOverall,
+        data.buildHint ?? '',
+        data.adminNote ?? '',
+        req.params.id,
+      ],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      res.status(404).json({ error: 'Request not found' });
+      return;
+    }
+    res.json({ request: mapDrawingRequest(row, true) });
   } catch (err) { next(err); }
 });
 
