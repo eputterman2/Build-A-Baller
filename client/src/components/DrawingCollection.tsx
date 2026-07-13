@@ -122,28 +122,20 @@ export function DrawingCollection() {
         <h2 className="results-title">Player Drawings</h2>
         <p>{collectedCount}/{drawings.length} collected</p>
       </div>
-      {customRequests.length > 0 && (
-        <section className="custom-drawing-placeholders" aria-label="Custom drawing placeholders">
-          <h3>Custom Drawing Placeholders</h3>
-          <div className="drawing-collection-grid">
-            {customRequests.map(request => (
-              <div className="drawing-collection-item custom-drawing-placeholder" key={request.id}>
-                <div className="custom-drawing-placeholder-art">
-                  {request.finalDrawingSrc ? (
-                    <img src={request.finalDrawingSrc} alt="" />
-                  ) : (
-                    <span>?</span>
-                  )}
-                </div>
-                <b>{request.finalName || request.subject}</b>
-                <small>{request.statusLabel}</small>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
       <div className="drawing-collection-grid">
+        {customRequests.map(request => (
+          <div className="drawing-collection-item custom-drawing-placeholder" key={request.id}>
+            <div className="custom-drawing-placeholder-art">
+              {request.finalDrawingSrc ? (
+                <img src={request.finalDrawingSrc} alt="" />
+              ) : (
+                <span>?</span>
+              )}
+            </div>
+            <b>{request.finalName || request.subject}</b>
+            <small>{request.statusLabel}</small>
+          </div>
+        ))}
         {drawings.map(drawing => {
           const drawingImage = (
             <img src={drawing.src} alt={`Player drawing ${drawing.number}`} />

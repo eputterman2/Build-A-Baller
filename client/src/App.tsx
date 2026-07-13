@@ -10,6 +10,8 @@ import { ResetPassword } from './components/ResetPassword';
 import { Market } from './components/Market';
 import { Accessories } from './components/Accessories';
 import { AdminMarket } from './components/AdminMarket';
+import { SiteFooter } from './components/SiteFooter';
+import { HowToPlayPage, PrivacyPage, TermsPage } from './components/LegalPage';
 
 export function App() {
   return (
@@ -25,11 +27,15 @@ export function App() {
           <Route path="/collection/accessories" element={<Accessories />} />
           <Route path="/market" element={<Market />} />
           <Route path="/admin/market" element={<AdminMarket />} />
+          <Route path="/how-to-play" element={<HowToPlayPage />} />
+          <Route path="/privacy" element={<PrivacyPage />} />
+          <Route path="/terms" element={<TermsPage />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/build/:id" element={<BuildPage />} />
           <Route path="*" element={<div className="notice">Page not found.</div>} />
         </Routes>
       </main>
+      <SiteFooter />
     </div>
   );
 }

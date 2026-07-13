@@ -463,9 +463,6 @@ export function Game() {
         <PlayerOfDay data={playerOfDay} loading={playerOfDayLoading} />
         <PlayerDrawingPoll />
         <FeedbackSection />
-        <p className="home-disclaimer">
-          Build-A-Baller is an independent project and is not affiliated with, endorsed by, or sponsored by the National Basketball Association.
-        </p>
       </div>
     );
   }

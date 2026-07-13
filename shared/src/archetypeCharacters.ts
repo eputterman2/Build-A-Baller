@@ -26,7 +26,7 @@ const character = (
   archetypes,
   minOverall,
   maxOverall,
-  src: `/archetype-players/${id}.png?v=5`,
+  src: `/archetype-players/${id}.png?v=7`,
 });
 
 const LOWEST = 0;

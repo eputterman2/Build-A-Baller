@@ -23,6 +23,8 @@ export function Nav() {
         <Link to="/leaderboard" className={pathname === '/leaderboard' ? 'active' : ''}>Leaderboard</Link>
         <Link to="/collection" className={pathname === '/collection' ? 'active' : ''}>Collection</Link>
         <Link to="/market" className={pathname === '/market' ? 'active' : ''}>Market</Link>
+      </nav>
+      <div className="nav-auth">
         {user ? (
           <span className="nav-user">
             <span className="username">@{user.username}</span>
@@ -31,7 +33,7 @@ export function Nav() {
         ) : (
           <button className="btn btn-small btn-login" onClick={() => setShowAuth(true)}>Log in</button>
         )}
-      </nav>
+      </div>
       {showAuth && <AuthModal onClose={() => setShowAuth(false)} />}
     </header>
   );
