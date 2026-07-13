@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Build-A-Baller 🏀</title>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+  <div class="app">
+
+    <!-- ===== Intro ===== -->
+    <section id="screen-intro" class="screen active">
+      <div class="hero">
+        <h1>BUILD-A-<span>BALLER</span></h1>
+        <p class="tagline">Spin the wheel of NBA legends and current stars. Each spin
+          steals one attribute from whoever you land on — height from one player,
+          a jumpshot from another. Stack them into your ultimate created baller.</p>
+        <ul class="how">
+          <li>🎯 <b>14 spins</b>, one per attribute</li>
+          <li>🏀 <b>100+ players</b>, past & present</li>
+          <li>🧪 Hidden <b>synergies & tradeoffs</b> shape your final grade</li>
+        </ul>
+        <button id="btn-start" class="btn btn-primary">Start Building</button>
+      </div>
+    </section>
+
+    <!-- ===== Spin ===== -->
+    <section id="screen-spin" class="screen">
+      <div class="spin-head">
+        <div class="progress">
+          <span id="spin-progress">Attribute 1 of 14</span>
+          <div class="progress-track"><div id="spin-progress-bar" class="progress-bar"></div></div>
+        </div>
+        <div class="spin-title">
+          Spinning for <span id="spin-category" class="cat-chip">Physical</span>
+          <h2 id="spin-attr-label">Height</h2>
+        </div>
+      </div>
+
+      <div class="wheel-wrap">
+        <div class="pointer">▼</div>
+        <canvas id="wheel-canvas" width="440" height="440"></canvas>
+      </div>
+
+      <div id="spin-result" class="spin-result hidden"></div>
+
+      <div class="spin-actions">
+        <button id="btn-spin" class="btn btn-primary">SPIN</button>
+        <button id="btn-next" class="btn btn-primary hidden">Next Spin ➜</button>
+      </div>
+    </section>
+
+    <!-- ===== Results ===== -->
+    <section id="screen-results" class="screen">
+      <h2 class="results-title">Your Created Baller</h2>
+
+      <div class="overall-card">
+        <div class="overall-num">
+          <span id="result-overall">0</span><small>OVR</small>
+        </div>
+        <div class="overall-grade">
+          <div id="result-grade" class="grade">B</div>
+          <div id="result-grade-label" class="grade-label">All-Star</div>
+        </div>
+      </div>
+
+      <div class="results-grid">
+        <div class="panel">
+          <h3>Categories</h3>
+          <div id="result-categories"></div>
+          <div id="result-injury" class="injury"></div>
+        </div>
+        <div class="panel">
+          <h3>Synergies & Tradeoffs</h3>
+          <div id="result-synergies"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Attribute Breakdown</h3>
+        <div id="result-attrs" class="attrs"></div>
+      </div>
+
+      <button id="btn-restart" class="btn btn-primary">Build Another Baller</button>
+    </section>
+
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/players.js"></script>
+  <script src="js/scoring.js"></script>
+  <script src="js/wheel.js"></script>
+  <script src="js/game.js"></script>
+</body>
+</html>

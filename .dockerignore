@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/.pgdata
+**/*.log
+.git
+legacy-static
+.claude
+*.md

@@ -1,0 +1,10 @@
+entrypoint = "server/src/index.ts"
+modules = ["nodejs-22"]
+run = "npm run install:all && npm run dev"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+build = "npm run install:all && npm run build"
+run = "npm start"
