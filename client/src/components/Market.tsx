@@ -251,7 +251,7 @@ export function Market() {
         })}
       </div>
       <section className="market-request-section" aria-label="Custom drawing requests">
-        <div className="market-request-card">
+        <div className="market-request-card market-request-card-pro">
           <div className="market-request-header">
             <span className="market-request-kicker">Custom Drawing</span>
             <strong>$5</strong>
@@ -275,6 +275,9 @@ export function Market() {
           >
             {requestBusyId === 'pro-player' ? 'Submitting...' : '$5 Submit'}
           </button>
+          <div className="pro-player-request-art" aria-hidden="true">
+            <img src="/market/pro-player/request-drawing.png" alt="" />
+          </div>
         </div>
         <div className="market-request-card market-request-card-photo">
           <div className="market-request-header">

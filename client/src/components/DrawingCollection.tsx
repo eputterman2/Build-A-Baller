@@ -59,6 +59,7 @@ export function DrawingCollection() {
   const [builds, setBuilds] = useState<CollectionBuild[] | null>(null);
   const [drawingStats, setDrawingStats] = useState<DrawingCollectionStats | null>(null);
   const [customRequests, setCustomRequests] = useState<MarketDrawingRequest[] | null>(null);
+  const [ownedMarketDrawingIds, setOwnedMarketDrawingIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
 
@@ -67,24 +68,32 @@ export function DrawingCollection() {
       setBuilds(null);
       setDrawingStats(null);
       setCustomRequests(null);
+      setOwnedMarketDrawingIds([]);
       return;
     }
     setError(null);
-    Promise.all([api.collection(), api.drawingStats(), api.drawingRequests()])
-      .then(([collection, stats, requests]) => {
+    Promise.all([api.collection(), api.drawingStats(), api.drawingRequests(), api.marketBundles()])
+      .then(([collection, stats, requests, market]) => {
         setBuilds(collection);
         setDrawingStats(stats);
         setCustomRequests(requests);
+        const ownedSet = new Set(market.ownedBundleIds);
+        setOwnedMarketDrawingIds(market.bundles
+          .filter(bundle => ownedSet.has(bundle.id))
+          .map(bundle => bundle.drawingId));
       })
       .catch(err => setError((err as Error).message));
   }, [user]);
 
   const drawings = useMemo(() => {
+    const ownedMarketDrawingSet = new Set(ownedMarketDrawingIds);
     return ARCHETYPE_CHARACTER_RULES.map((drawing, index) => ({
       id: drawing.id,
       src: drawing.src,
       number: index + 1,
       collected: (drawingStats?.[drawing.id]?.cards ?? 0) > 0,
+      marketUnlocked: ownedMarketDrawingSet.has(drawing.id),
+      unlocked: (drawingStats?.[drawing.id]?.cards ?? 0) > 0 || ownedMarketDrawingSet.has(drawing.id),
       collectionStats: drawingStats?.[drawing.id] ?? {
         cards: 0,
         highestOverall: 0,
@@ -95,7 +104,7 @@ export function DrawingCollection() {
         ? '?'
         : DRAWING_BUILD_HINTS[drawing.id] ?? 'A matching all-around build',
     }));
-  }, [drawingStats]);
+  }, [drawingStats, ownedMarketDrawingIds]);
 
   const selectedDrawing = drawings.find(drawing => drawing.id === selectedDrawingId);
 
@@ -113,7 +122,7 @@ export function DrawingCollection() {
   if (error) return <div className="notice error">Couldn’t load drawings: {error}</div>;
   if (!builds || !drawingStats || !customRequests) return <div className="notice">Loading drawings…</div>;
 
-  const collectedCount = drawings.filter(drawing => drawing.collected).length;
+  const collectedCount = drawings.filter(drawing => drawing.unlocked).length;
 
   return (
     <div className="drawing-collection">
@@ -145,8 +154,10 @@ export function DrawingCollection() {
             <button
               aria-label={drawing.collected
                 ? `See collection stats for player drawing ${drawing.number}`
-                : `See how to unlock player drawing ${drawing.number}`}
-              className={`drawing-collection-item ${drawing.collected ? 'is-collected' : 'is-locked'}`}
+                : drawing.marketUnlocked
+                  ? `See unlock details for player drawing ${drawing.number}`
+                  : `See how to unlock player drawing ${drawing.number}`}
+              className={`drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`}
               key={drawing.id}
               onClick={() => setSelectedDrawingId(drawing.id)}
               type="button"
@@ -195,6 +206,21 @@ export function DrawingCollection() {
                   <div>
                     <dt>Player of the Day wins</dt>
                     <dd>{selectedDrawing.collectionStats.playerOfDayWins}</dd>
+                  </div>
+                </dl>
+              </>
+            ) : selectedDrawing.marketUnlocked ? (
+              <>
+                <p className="drawing-hint-label is-collected">UNLOCKED DRAWING</p>
+                <h3 id="drawing-hint-title">Ready to use</h3>
+                <dl className="drawing-hint-details">
+                  <div>
+                    <dt>Source</dt>
+                    <dd>Golden State Bundle</dd>
+                  </div>
+                  <div>
+                    <dt>Use it</dt>
+                    <dd>Eligible saved cards</dd>
                   </div>
                 </dl>
               </>

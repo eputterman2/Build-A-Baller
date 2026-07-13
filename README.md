@@ -116,11 +116,14 @@ See **[DEPLOY.md](DEPLOY.md)** for the full Google Cloud (Cloud Run + Cloud SQL)
 | `CLIENT_DIST` | prod | Path to the built client; set in the Dockerfile. |
 | `CLIENT_ORIGIN` | no | Dev CORS origin (default `http://localhost:5173`). |
 | `EMBEDDED_PG` | no | `1` forces embedded Postgres (set automatically by `npm run dev`). |
-| `STRIPE_SECRET_KEY` | payments | Stripe secret key used to create Checkout sessions. If omitted, market unlocks use the local dev flow. |
+| `STRIPE_SECRET_KEY` | payments | Optional fallback Stripe secret key used to create Checkout sessions when Payment Links are not configured. |
 | `STRIPE_WEBHOOK_SECRET` | payments | Stripe webhook signing secret for `/api/market/webhook`. Required for paid items to unlock after checkout. |
 | `STRIPE_GOLDEN_STATE_PRICE_ID` | no | Optional override for the Golden State Bundle price. Default: `price_1TrQcfK3B9PbooQWAaX0W5e2`. |
 | `STRIPE_PRO_PLAYER_PRICE_ID` | no | Optional override for the Pro Player Request price. Default: `price_1TrQlRK3B9PbooQW9OqJJkZH`. |
 | `STRIPE_PHOTO_DRAWING_PRICE_ID` | no | Optional override for the Photo Drawing Request price. Default: `price_1TrQkAK3B9PbooQW30n0Tnry`. |
+| `STRIPE_GOLDEN_STATE_PAYMENT_LINK` | no | Optional override for the Golden State Bundle Payment Link. |
+| `STRIPE_PRO_PLAYER_PAYMENT_LINK` | no | Optional override for the Pro Player Request Payment Link. |
+| `STRIPE_PHOTO_DRAWING_PAYMENT_LINK` | no | Optional override for the Photo Drawing Request Payment Link. |
 
 ### Stripe Checkout
 

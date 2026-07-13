@@ -17,6 +17,11 @@ export const config = {
     proPlayerRequest: process.env.STRIPE_PRO_PLAYER_PRICE_ID || 'price_1TrQlRK3B9PbooQW9OqJJkZH',
     photoDrawingRequest: process.env.STRIPE_PHOTO_DRAWING_PRICE_ID || 'price_1TrQkAK3B9PbooQW30n0Tnry',
   },
+  stripePaymentLinks: {
+    goldenStateBundle: process.env.STRIPE_GOLDEN_STATE_PAYMENT_LINK || 'https://buy.stripe.com/8x27sLdsa9QZ5QQgOqf7i00',
+    proPlayerRequest: process.env.STRIPE_PRO_PLAYER_PAYMENT_LINK || 'https://buy.stripe.com/9B6aEXafY0gp3IIeGif7i01',
+    photoDrawingRequest: process.env.STRIPE_PHOTO_DRAWING_PAYMENT_LINK || 'https://buy.stripe.com/14A8wP1Js3sBgvu69Mf7i02',
+  },
   // In production, path to the built React app to serve as static files.
   clientDist: process.env.CLIENT_DIST || '',
   nodeEnv: process.env.NODE_ENV || 'development',

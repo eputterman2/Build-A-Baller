@@ -6,7 +6,7 @@ import { query } from '../db';
 
 export const feedbackRouter = Router();
 
-const FEEDBACK_TO = 'eputterman2@gmail.com';
+const FEEDBACK_TO = 'baballersupport@gmail.com';
 const MAX_FEEDBACK_WORDS = 300;
 
 const feedbackSchema = z.object({

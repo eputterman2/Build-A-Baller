@@ -19,6 +19,14 @@ interface CheckoutSessionResponse {
   url?: string;
 }
 
+interface ParsedCheckoutReference {
+  purchaseKind?: 'bundle' | 'drawing_request';
+  userId?: string;
+  bundleId?: string;
+  requestId?: string;
+  requestType?: DrawingRequestType;
+}
+
 const drawingRequestSchema = z.object({
   type: z.enum(['pro-player', 'photo-player']),
   subject: z.string().trim().min(2, 'Add a name for the request.').max(80, 'Keep the name under 80 characters.'),
@@ -128,6 +136,47 @@ function stripePriceForDrawingRequest(type: DrawingRequestType): string {
     : config.stripePrices.photoDrawingRequest;
 }
 
+function paymentLinkForDrawingRequest(type: DrawingRequestType): string {
+  return type === 'pro-player'
+    ? config.stripePaymentLinks.proPlayerRequest
+    : config.stripePaymentLinks.photoDrawingRequest;
+}
+
+function checkoutReferenceForBundle(userId: string, bundleId: string): string {
+  return `bab_bundle:${userId}:${bundleId}`;
+}
+
+function checkoutReferenceForDrawingRequest(userId: string, requestId: string, type: DrawingRequestType): string {
+  return `bab_request:${userId}:${requestId}:${type}`;
+}
+
+function parseCheckoutReference(reference = ''): ParsedCheckoutReference {
+  const [kind, userId, objectId, requestType] = reference.split(':');
+  if (kind === 'bab_bundle' && userId && objectId) {
+    return { purchaseKind: 'bundle', userId, bundleId: objectId };
+  }
+  if (
+    kind === 'bab_request'
+    && userId
+    && objectId
+    && (requestType === 'pro-player' || requestType === 'photo-player')
+  ) {
+    return {
+      purchaseKind: 'drawing_request',
+      userId,
+      requestId: objectId,
+      requestType,
+    };
+  }
+  return {};
+}
+
+function checkoutUrlForPaymentLink(paymentLink: string, clientReferenceId: string): string {
+  const url = new URL(paymentLink);
+  url.searchParams.set('client_reference_id', clientReferenceId);
+  return url.toString();
+}
+
 function checkoutBaseUrl(req: Request): string {
   return req.get('origin') || config.clientOrigin;
 }
@@ -184,25 +233,31 @@ function verifyStripeSignature(rawBody: Buffer, signatureHeader: string, secret:
 async function fulfillCheckoutSession(session: {
   id: string;
   payment_status?: string;
+  client_reference_id?: string;
   metadata?: Record<string, string>;
 }): Promise<void> {
   if (session.payment_status && session.payment_status !== 'paid') return;
   const metadata = session.metadata ?? {};
-  if (metadata.purchaseKind === 'bundle' && metadata.bundleId) {
+  const reference = parseCheckoutReference(session.client_reference_id);
+  const purchaseKind = metadata.purchaseKind || reference.purchaseKind;
+  const userId = metadata.userId || reference.userId;
+  const bundleId = metadata.bundleId || reference.bundleId;
+  const requestId = metadata.requestId || reference.requestId;
+  if (purchaseKind === 'bundle' && userId && bundleId) {
     await query(
       `INSERT INTO user_bundles (user_id, bundle_id)
        VALUES ($1, $2)
        ON CONFLICT (user_id, bundle_id) DO NOTHING`,
-      [metadata.userId, metadata.bundleId],
+      [userId, bundleId],
     );
     return;
   }
-  if (metadata.purchaseKind === 'drawing_request' && metadata.requestId) {
+  if (purchaseKind === 'drawing_request' && userId && requestId) {
     await query(
       `UPDATE market_drawing_requests
        SET status = 'paid', stripe_session_id = $1, paid_at = now()
        WHERE id = $2 AND user_id = $3`,
-      [session.id, metadata.requestId, metadata.userId],
+      [session.id, requestId, userId],
     );
   }
 }
@@ -230,6 +285,18 @@ marketRouter.post('/bundles/:id/purchase', requireAuth, async (req, res, next) =
     const bundle = MARKET_BUNDLES_BY_ID[req.params.id];
     if (!bundle) {
       res.status(404).json({ error: 'Bundle not found' });
+      return;
+    }
+
+    if (config.stripePaymentLinks.goldenStateBundle) {
+      res.json({
+        bundle,
+        ownedBundleIds: await ownedBundleIds(req.user!.id),
+        checkoutUrl: checkoutUrlForPaymentLink(
+          config.stripePaymentLinks.goldenStateBundle,
+          checkoutReferenceForBundle(req.user!.id, bundle.id),
+        ),
+      });
       return;
     }
 
@@ -432,6 +499,22 @@ marketRouter.post('/drawing-requests', requireAuth, async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6)`,
       [id, req.user!.id, type, subject, photoDataUrl, priceCents],
     );
+
+    const paymentLink = paymentLinkForDrawingRequest(type);
+    if (paymentLink) {
+      const clientReferenceId = checkoutReferenceForDrawingRequest(req.user!.id, id, type);
+      await query(
+        `UPDATE market_drawing_requests
+         SET stripe_session_id = $1, status = 'pending_checkout'
+         WHERE id = $2`,
+        [clientReferenceId, id],
+      );
+      res.status(201).json({
+        request: { id, type, subject, priceCents, status: 'pending_checkout' },
+        checkoutUrl: checkoutUrlForPaymentLink(paymentLink, clientReferenceId),
+      });
+      return;
+    }
 
     if (config.stripeSecretKey) {
       const baseUrl = checkoutBaseUrl(req);

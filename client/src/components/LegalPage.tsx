@@ -25,7 +25,7 @@ export function PrivacyPage() {
         <p>Payments are processed by Stripe. Build-A-Baller does not store full card numbers.</p>
         <p>Some information may be public, including usernames, saved player cards, player names, mottos, countries or flags, drawings used on cards, leaderboards, and Player of the Day results.</p>
         <p>Build-A-Baller uses local browser storage and account data to keep you signed in and remember game features. The site does not need advertising cookies to work.</p>
-        <p>For privacy questions or removal requests, contact <a href="mailto:eputterman2@gmail.com">eputterman2@gmail.com</a>.</p>
+        <p>For privacy questions or removal requests, contact <a href="mailto:baballersupport@gmail.com">baballersupport@gmail.com</a>.</p>
       </div>
     </section>
   );
@@ -43,7 +43,7 @@ export function TermsPage() {
         <p>Build-A-Baller may update rules, odds, stats, drawings, market items, leaderboards, accounts, or saved data to improve the game, fix issues, handle moderation, or keep the experience fair.</p>
         <p>Build-A-Baller artwork, card designs, code, text, and game design belong to Build-A-Baller or its creator. You may share your own saved cards for personal, non-commercial use.</p>
         <p>Build-A-Baller is provided as is. It may change, break, reset, or become unavailable at times.</p>
-        <p>Questions about these terms can be sent to <a href="mailto:eputterman2@gmail.com">eputterman2@gmail.com</a>.</p>
+        <p>Questions about these terms can be sent to <a href="mailto:baballersupport@gmail.com">baballersupport@gmail.com</a>.</p>
       </div>
     </section>
   );
