@@ -62,6 +62,8 @@ export function DrawingCollection() {
   const [ownedMarketDrawingIds, setOwnedMarketDrawingIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -124,6 +126,21 @@ export function DrawingCollection() {
 
   const collectedCount = drawings.filter(drawing => drawing.unlocked).length;
 
+  const deleteRejectedRequest = async (request: MarketDrawingRequest) => {
+    if (request.status !== 'rejected') return;
+    if (!window.confirm('Delete this rejected drawing placeholder?')) return;
+    setDeletingRequestId(request.id);
+    setDeleteError(null);
+    try {
+      await api.deleteDrawingRequest(request.id);
+      setCustomRequests(current => current?.filter(item => item.id !== request.id) ?? current);
+    } catch (err) {
+      setDeleteError((err as Error).message);
+    } finally {
+      setDeletingRequestId(null);
+    }
+  };
+
   return (
     <div className="drawing-collection">
       <div className="collection-subpage-head">
@@ -143,6 +160,16 @@ export function DrawingCollection() {
             </div>
             <b>{request.finalName || request.subject}</b>
             <small>{request.statusLabel}</small>
+            {request.status === 'rejected' && (
+              <button
+                className="custom-drawing-delete"
+                disabled={deletingRequestId === request.id}
+                onClick={() => deleteRejectedRequest(request)}
+                type="button"
+              >
+                {deletingRequestId === request.id ? 'deleting...' : 'delete'}
+              </button>
+            )}
           </div>
         ))}
         {drawings.map(drawing => {
@@ -167,6 +194,7 @@ export function DrawingCollection() {
           );
         })}
       </div>
+      {deleteError && <div className="form-error drawing-delete-error">{deleteError}</div>}
 
       {selectedDrawing && (
         <div

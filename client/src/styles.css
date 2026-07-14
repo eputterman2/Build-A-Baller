@@ -691,6 +691,13 @@ button.drawing-collection-item:focus-visible {
   max-width: 100%; font-size: 18px; line-height: 1.05; overflow-wrap: anywhere;
 }
 .custom-drawing-placeholder small { color: var(--muted); font-size: 14px; line-height: 1; }
+.custom-drawing-delete {
+  appearance: none; cursor: pointer; color: var(--red); background: transparent;
+  border: 0; padding: 0; font: inherit; font-size: 15px; line-height: 1;
+  text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px;
+}
+.custom-drawing-delete:disabled { cursor: wait; opacity: .55; }
+.drawing-delete-error { margin: 12px auto 0; text-align: center; }
 .drawing-hint-backdrop {
   position: fixed; z-index: 80; inset: 0; display: grid; place-items: center; padding: 20px;
   background: rgba(29, 31, 36, .32);

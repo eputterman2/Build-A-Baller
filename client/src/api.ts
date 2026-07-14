@@ -149,6 +149,8 @@ export const api = {
     }),
   drawingRequests: () =>
     req<{ requests: MarketDrawingRequest[] }>('/market/drawing-requests').then(d => d.requests),
+  deleteDrawingRequest: (id: string) =>
+    req<{ ok: true }>('/market/drawing-requests/' + id, { method: 'DELETE' }).then(d => d.ok),
   adminDrawingRequests: (secret: string) =>
     req<{ requests: MarketDrawingRequest[] }>('/market/admin/drawing-requests', {
       headers: adminHeaders(secret),

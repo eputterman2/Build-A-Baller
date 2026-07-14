@@ -376,6 +376,32 @@ marketRouter.get('/drawing-requests', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+marketRouter.delete('/drawing-requests/:id', requireAuth, async (req, res, next) => {
+  try {
+    const result = await query<Pick<DrawingRequestRow, 'id' | 'status'>>(
+      `SELECT id, status
+       FROM market_drawing_requests
+       WHERE id = $1 AND user_id = $2`,
+      [req.params.id, req.user!.id],
+    );
+    const request = result.rows[0];
+    if (!request) {
+      res.status(404).json({ error: 'Request not found' });
+      return;
+    }
+    if (request.status !== 'rejected') {
+      res.status(400).json({ error: 'Only rejected drawing requests can be deleted.' });
+      return;
+    }
+    await query(
+      `DELETE FROM market_drawing_requests
+       WHERE id = $1 AND user_id = $2 AND status = 'rejected'`,
+      [req.params.id, req.user!.id],
+    );
+    res.json({ ok: true });
+  } catch (err) { next(err); }
+});
+
 marketRouter.get('/drawings/:id/image', async (req, res, next) => {
   try {
     const result = await query<{
