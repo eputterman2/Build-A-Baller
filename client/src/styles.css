@@ -81,11 +81,24 @@ body {
 
 /* ---- Intro / home ---- */
 .hero { text-align: center; padding: 4px 8px 28px; }
-.hero-logo { width: min(540px, 92%); display: block; margin: -10px auto -56px; }
+.hero-brand-lockup {
+  position: relative;
+  width: min(540px, 92%);
+  margin: -10px auto -56px;
+}
+.hero-logo { width: 100%; display: block; }
+.hero-hand-drawn-pennant {
+  position: absolute;
+  top: 54%;
+  left: 1%;
+  width: 36%;
+  display: block;
+}
 .hero-players { width: min(560px, 94%); display: block; margin: -44px auto -36px; mix-blend-mode: multiply; }
 .tagline { color: var(--ink); max-width: 560px; margin: 0 auto 14px; font-size: 22px; line-height: 1.4; }
 .hero .btn { font-size: 30px; padding: 12px 40px; }
 @media (max-width: 620px) {
+  .hero-hand-drawn-pennant { top: 54%; width: 40%; }
   .hero-players { margin-bottom: -28px; }
   .tagline { margin-top: 0; margin-bottom: 14px; }
 }
@@ -842,6 +855,15 @@ button.drawing-collection-item:focus-visible {
   --tier-end: #c3cbd6;
   --tier-line: rgba(64, 72, 82, .34);
   --tier-number: #68717d;
+}
+.card-tier-onyx {
+  --tier-spot: rgba(60, 211, 190, .26);
+  --tier-start: #303740;
+  --tier-mid: #171c22;
+  --tier-end: #05070a;
+  --tier-line: rgba(236, 198, 104, .58);
+  --tier-number: #f0c968;
+  --tier-shine: rgba(126, 230, 214, .12);
 }
 .card-tier-gold, .overall-tier-gold {
   --tier-spot: rgba(255, 230, 135, .28);

@@ -573,16 +573,23 @@ buildsRouter.get('/drawing-stats', requireAuth, async (req, res, next) => {
 
     for (const build of buildResult.rows) {
       const drawingId = characterIdForBuild(build.result, build.picks, build.character_id);
-      const drawingStats = stats[drawingId];
-      if (!drawingStats) continue;
+      const drawingStats = stats[drawingId] ??= {
+        cards: 0,
+        highestOverall: 0,
+        playerOfDayWins: 0,
+      };
       drawingStats.cards += 1;
       drawingStats.highestOverall = Math.max(drawingStats.highestOverall, build.overall);
     }
 
     for (const win of winResult.rows) {
       const drawingId = characterIdForBuild(win.result, win.picks, win.character_id);
-      const drawingStats = stats[drawingId];
-      if (drawingStats) drawingStats.playerOfDayWins += 1;
+      const drawingStats = stats[drawingId] ??= {
+        cards: 0,
+        highestOverall: 0,
+        playerOfDayWins: 0,
+      };
+      drawingStats.playerOfDayWins += 1;
     }
 
     res.json({ stats });

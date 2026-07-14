@@ -139,7 +139,7 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ characterId }),
     }).then(d => d.characterId),
-  marketBundles: () => req<MarketBundlesResponse>('/market/bundles'),
+  marketBundles: () => req<MarketBundlesResponse>('/market/bundles', { cache: 'no-store' }),
   purchaseBundle: (id: string) =>
     req<{ bundle: MarketBundle; ownedBundleIds: string[] } & CheckoutResponse>('/market/bundles/' + id + '/purchase', { method: 'POST' }),
   submitDrawingRequest: (request: MarketDrawingRequestInput) =>
@@ -148,7 +148,7 @@ export const api = {
       body: JSON.stringify(request),
     }),
   drawingRequests: () =>
-    req<{ requests: MarketDrawingRequest[] }>('/market/drawing-requests').then(d => d.requests),
+    req<{ requests: MarketDrawingRequest[] }>('/market/drawing-requests', { cache: 'no-store' }).then(d => d.requests),
   deleteDrawingRequest: (id: string) =>
     req<{ ok: true }>('/market/drawing-requests/' + id, { method: 'DELETE' }).then(d => d.ok),
   adminDrawingRequests: (secret: string) =>

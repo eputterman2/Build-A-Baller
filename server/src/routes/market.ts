@@ -8,6 +8,7 @@ import {
 import { requireAuth } from '../auth';
 import { query } from '../db';
 import { config } from '../env';
+import { normalizeDrawingDataUrl } from '../imageProcessing';
 import { hasDisallowedPublicContent } from '../moderation';
 
 export const marketRouter = Router();
@@ -417,11 +418,18 @@ marketRouter.get('/drawings/:id/image', async (req, res, next) => {
       res.status(404).json({ error: 'Drawing not found' });
       return;
     }
-    const [meta, base64] = dataUrl.split(',');
-    const mime = meta.match(/^data:(image\/[^;]+);base64$/i)?.[1] || 'image/png';
-    res.setHeader('Content-Type', mime);
-    res.setHeader('Cache-Control', 'public, max-age=300');
-    res.end(Buffer.from(base64, 'base64'));
+    const normalized = await normalizeDrawingDataUrl(dataUrl);
+    if (normalized.dataUrl !== dataUrl) {
+      await query(
+        `UPDATE market_drawing_requests
+         SET final_drawing_data_url = $1
+         WHERE id = $2 AND final_drawing_data_url = $3`,
+        [normalized.dataUrl, req.params.id, dataUrl],
+      );
+    }
+    res.setHeader('Content-Type', normalized.mime);
+    res.setHeader('Cache-Control', 'public, max-age=0, must-revalidate');
+    res.end(normalized.buffer);
   } catch (err) { next(err); }
 });
 
@@ -479,6 +487,13 @@ marketRouter.post('/admin/drawing-requests/:id/fulfill', async (req, res, next) 
       res.status(400).json({ error: 'Upload a PNG, JPG, or WEBP drawing.' });
       return;
     }
+    let normalizedDrawing;
+    try {
+      normalizedDrawing = await normalizeDrawingDataUrl(data.finalDrawingDataUrl);
+    } catch {
+      res.status(400).json({ error: 'The drawing could not be read. Upload a valid PNG, JPG, or WEBP image.' });
+      return;
+    }
     const result = await query<DrawingRequestRow>(
       `UPDATE market_drawing_requests r
        SET status = 'fulfilled',
@@ -495,7 +510,7 @@ marketRouter.post('/admin/drawing-requests/:id/fulfill', async (req, res, next) 
        RETURNING r.*, u.username`,
       [
         data.finalName,
-        data.finalDrawingDataUrl,
+        normalizedDrawing.dataUrl,
         data.visibility,
         data.minOverall,
         data.maxOverall,

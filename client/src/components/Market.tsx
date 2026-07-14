@@ -10,6 +10,8 @@ const dollars = (cents: number) => `$${(cents / 100).toFixed(0)}`;
 const marketItemOrder = { userIcon: 0, cardBanner: 1, cardFrame: 2 };
 const BUNDLE_SUCCESS_MESSAGE = 'Thank you for your purchase! All Golden State Bundle items are now available in Accessories.';
 const DRAWING_SUCCESS_MESSAGE = 'Thank you for your purchase! A placeholder is now in Drawings Collected and will automatically update when your drawing is available.';
+const PENDING_CHECKOUT_STORAGE_KEY = 'baller-market-pending-checkout';
+const PENDING_CHECKOUT_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 type MarketPreviewItem = {
   id: string;
   name: string;
@@ -22,8 +24,64 @@ type MarketDisclaimer =
   | { type: 'bundle'; bundle: MarketBundle }
   | { type: DrawingRequestType };
 type PendingCheckout =
-  | { type: 'bundle'; bundleId: string }
-  | { type: 'drawing-request'; requestId: string; requestType: DrawingRequestType };
+  | { type: 'bundle'; bundleId: string; userId: string; startedAt: number }
+  | { type: 'drawing-request'; requestId: string; requestType: DrawingRequestType; userId: string; startedAt: number };
+
+function storedPendingCheckout(userId: string): PendingCheckout | null {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_CHECKOUT_STORAGE_KEY) ?? 'null') as PendingCheckout | null;
+    if (!parsed || parsed.userId !== userId || Date.now() - parsed.startedAt > PENDING_CHECKOUT_MAX_AGE_MS) {
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      return null;
+    }
+    if (parsed.type === 'bundle' && parsed.bundleId) return parsed;
+    if (parsed.type === 'drawing-request' && parsed.requestId && parsed.requestType) return parsed;
+  } catch {
+    localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+  }
+  return null;
+}
+
+function rememberPendingCheckout(checkout: PendingCheckout) {
+  localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkout));
+}
+
+function reloadWithCheckoutConfirmation(checkout: 'bundle-success' | 'drawing-success') {
+  localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+  const url = new URL(window.location.href);
+  url.searchParams.set('checkout', checkout);
+  window.location.replace(url.toString());
+}
+
+function openCheckoutWindow(): Window | null {
+  const checkoutWindow = window.open('', '_blank');
+  if (!checkoutWindow) return null;
+  checkoutWindow.document.open();
+  checkoutWindow.document.write(`<!doctype html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title>Opening Stripe | Build-A-Baller</title>
+        <style>
+          html, body { min-height: 100%; margin: 0; background: #fdfbf4; color: #16181d; }
+          body { display: grid; place-items: center; font-family: "Comic Sans MS", system-ui, sans-serif; }
+          main { display: grid; justify-items: center; gap: 16px; padding: 24px; text-align: center; }
+          img { width: min(260px, 70vw); height: auto; }
+          p { margin: 0; font-size: 20px; }
+        </style>
+      </head>
+      <body>
+        <main>
+          <img src="/logo.png" alt="Build-A-Baller">
+          <p>Opening secure checkout...</p>
+        </main>
+      </body>
+    </html>`);
+  checkoutWindow.document.close();
+  checkoutWindow.opener = null;
+  return checkoutWindow;
+}
 
 function readImageDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -58,15 +116,24 @@ export function Market() {
     const checkout = new URLSearchParams(window.location.search).get('checkout');
     if (checkout === 'bundle-success') {
       setMessage(BUNDLE_SUCCESS_MESSAGE);
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
     }
     if (checkout === 'drawing-success') {
       setRequestMessage(DRAWING_SUCCESS_MESSAGE);
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
     }
     if (checkout === 'success') {
       setMessage('Thank you for your purchase! Your market item will be available shortly.');
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
     }
     if (checkout === 'cancelled') {
       setError('Checkout was cancelled.');
+      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+    }
+    if (checkout) {
+      const cleanUrl = new URL(window.location.href);
+      cleanUrl.searchParams.delete('checkout');
+      window.history.replaceState({}, '', `${cleanUrl.pathname}${cleanUrl.search}${cleanUrl.hash}`);
     }
   }, []);
 
@@ -90,40 +157,52 @@ export function Market() {
   }, [user]);
 
   useEffect(() => {
+    if (!user) {
+      setPendingCheckout(null);
+      return;
+    }
+    const stored = storedPendingCheckout(user.id);
+    if (stored) {
+      setPendingCheckout(stored);
+      if (stored.type === 'bundle') {
+        setMessage('Confirming your Stripe purchase...');
+      } else {
+        setRequestMessage('Confirming your Stripe purchase...');
+      }
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!pendingCheckout) return undefined;
 
     let cancelled = false;
     let attempts = 0;
+    let checking = false;
     const maxAttempts = 40;
 
     const poll = async () => {
-      if (cancelled) return;
+      if (cancelled || checking) return;
+      checking = true;
       attempts += 1;
       try {
         if (pendingCheckout.type === 'bundle') {
           const data = await loadMarket(true);
           if (data?.ownedBundleIds.includes(pendingCheckout.bundleId)) {
-            setMessage(BUNDLE_SUCCESS_MESSAGE);
-            setPendingCheckout(null);
+            reloadWithCheckoutConfirmation('bundle-success');
             return;
           }
         } else {
           const requests = await api.drawingRequests();
           const request = requests.find(item => item.id === pendingCheckout.requestId);
           if (request && request.status !== 'pending_checkout') {
-            setRequestMessage(DRAWING_SUCCESS_MESSAGE);
-            if (pendingCheckout.requestType === 'pro-player') setProPlayerName('');
-            else {
-              setPhotoSubject('');
-              setPhotoDataUrl('');
-              setPhotoFileName('');
-            }
-            setPendingCheckout(null);
+            reloadWithCheckoutConfirmation('drawing-success');
             return;
           }
         }
       } catch {
         // Keep polling; Stripe webhooks can arrive a few seconds after checkout.
+      } finally {
+        checking = false;
       }
       if (!cancelled && attempts < maxAttempts) {
         window.setTimeout(poll, 3000);
@@ -134,11 +213,16 @@ export function Market() {
     const onFocus = () => {
       void poll();
     };
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void poll();
+    };
     window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibilityChange);
     return () => {
       cancelled = true;
       window.clearTimeout(timeoutId);
       window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [pendingCheckout]);
 
@@ -151,17 +235,23 @@ export function Market() {
   };
 
   const buy = async (bundle: MarketBundle) => {
-    const checkoutWindow = window.open('about:blank', '_blank');
+    const checkoutWindow = openCheckoutWindow();
     setBusyId(bundle.id);
     setMessage(null);
     setError(null);
     try {
       const result = await api.purchaseBundle(bundle.id);
       if (result.checkoutUrl) {
+        const checkout: PendingCheckout = {
+          type: 'bundle',
+          bundleId: bundle.id,
+          userId: user!.id,
+          startedAt: Date.now(),
+        };
+        rememberPendingCheckout(checkout);
+        setPendingCheckout(checkout);
         if (checkoutWindow) {
-          checkoutWindow.opener = null;
           checkoutWindow.location.href = result.checkoutUrl;
-          setPendingCheckout({ type: 'bundle', bundleId: bundle.id });
           setMessage('Stripe checkout opened in a new tab. This page will update after payment.');
           setDisclaimer(null);
         } else {
@@ -226,7 +316,7 @@ export function Market() {
 
   const submitDrawingRequest = async (type: DrawingRequestType) => {
     const subject = (type === 'pro-player' ? proPlayerName : photoSubject).trim();
-    const checkoutWindow = window.open('about:blank', '_blank');
+    const checkoutWindow = openCheckoutWindow();
     setRequestBusyId(type);
     setRequestMessage(null);
     setRequestError(null);
@@ -237,14 +327,17 @@ export function Market() {
         photoDataUrl: type === 'photo-player' ? photoDataUrl : undefined,
       });
       if (result.checkoutUrl) {
+        const checkout: PendingCheckout = {
+          type: 'drawing-request',
+          requestId: result.request.id,
+          requestType: type,
+          userId: user!.id,
+          startedAt: Date.now(),
+        };
+        rememberPendingCheckout(checkout);
+        setPendingCheckout(checkout);
         if (checkoutWindow) {
-          checkoutWindow.opener = null;
           checkoutWindow.location.href = result.checkoutUrl;
-          setPendingCheckout({
-            type: 'drawing-request',
-            requestId: result.request.id,
-            requestType: type,
-          });
           setRequestMessage('Stripe checkout opened in a new tab. This page will update after payment.');
           setDisclaimer(null);
         } else {

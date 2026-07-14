@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ACCESSORIES_BY_ID, CATEGORIES, COMMON_COUNTRIES, analyzeBuild, buildArchetype, gradeFor, resolveArchetypeCharacter,
+  ACCESSORIES_BY_ID, CATEGORIES, COMMON_COUNTRIES, analyzeBuild, buildArchetype, gradeFor,
+  isCustomCharacterId, resolveArchetypeCharacter,
   type BuildDetail, type CategoryName,
 } from '@shared/index';
 import { overallTier } from '../util';
@@ -49,6 +50,7 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   const userIcon = selectedAccessories?.userIconId ? ACCESSORIES_BY_ID[selectedAccessories.userIconId] : null;
   const cardFrame = selectedAccessories?.cardFrameId ? ACCESSORIES_BY_ID[selectedAccessories.cardFrameId] : null;
   const cardBanner = selectedAccessories?.cardBannerId ? ACCESSORIES_BY_ID[selectedAccessories.cardBannerId] : null;
+  const cardTier = isCustomCharacterId(build.characterId) ? 'onyx' : overallTier(build.overall);
   const cardViewTo = viewTo ?? `/build/${build.id}`;
   const toggleFlip = () => setFlipped(v => !v);
   const toggleFromKeyboard = (e: React.KeyboardEvent<HTMLDivElement>) => {
@@ -58,7 +60,7 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   };
 
   return (
-    <article className={`sports-card-wrap card-tier-${overallTier(build.overall)}${flipped ? ' flipped' : ''}${cardFrame ? ' has-card-frame' : ''}${cardBanner ? ' has-card-banner' : ''}`}>
+    <article className={`sports-card-wrap card-tier-${cardTier}${flipped ? ' flipped' : ''}${cardFrame ? ' has-card-frame' : ''}${cardBanner ? ' has-card-banner' : ''}`}>
       <div className="sports-card-meta">
         {rank != null && (
           <span className="sports-card-rank">

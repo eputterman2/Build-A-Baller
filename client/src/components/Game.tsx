@@ -456,7 +456,14 @@ export function Game() {
   if (phase === 'intro') {
     return (
       <div className="hero">
-        <img className="hero-logo" src="/logo.png" alt="Build-A-Baller" />
+        <div className="hero-brand-lockup">
+          <img className="hero-logo" src="/logo.png" alt="Build-A-Baller" />
+          <img
+            className="hero-hand-drawn-pennant"
+            src="/hero-hand-drawn-pennant.png"
+            alt="Player art drawn by hand"
+          />
+        </div>
         <img className="hero-players" src="/hero-players.png" alt="" />
         <p className="tagline">Build your dream baller one stat at a time.</p>
         <button className="btn btn-primary" onClick={start}>Start Building</button>

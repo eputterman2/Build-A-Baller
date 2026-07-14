@@ -89,10 +89,31 @@ export function DrawingCollection() {
 
   const drawings = useMemo(() => {
     const ownedMarketDrawingSet = new Set(ownedMarketDrawingIds);
-    return ARCHETYPE_CHARACTER_RULES.map((drawing, index) => ({
+    const customDrawings = (customRequests ?? [])
+      .filter(request => request.status === 'fulfilled' && request.finalDrawingSrc)
+      .map(request => ({
+        id: request.characterId,
+        src: request.finalDrawingSrc,
+        name: request.finalName || request.subject,
+        number: null,
+        custom: true,
+        collected: (drawingStats?.[request.characterId]?.cards ?? 0) > 0,
+        marketUnlocked: true,
+        unlocked: true,
+        collectionStats: drawingStats?.[request.characterId] ?? {
+          cards: 0,
+          highestOverall: 0,
+          playerOfDayWins: 0,
+        },
+        overallRange: formatOverallRange(request.minOverall, request.maxOverall),
+        buildHint: request.buildHint || 'Custom drawing',
+      }));
+    const standardDrawings = ARCHETYPE_CHARACTER_RULES.map((drawing, index) => ({
       id: drawing.id,
       src: drawing.src,
+      name: drawing.name,
       number: index + 1,
+      custom: false,
       collected: (drawingStats?.[drawing.id]?.cards ?? 0) > 0,
       marketUnlocked: ownedMarketDrawingSet.has(drawing.id),
       unlocked: (drawingStats?.[drawing.id]?.cards ?? 0) > 0 || ownedMarketDrawingSet.has(drawing.id),
@@ -106,7 +127,8 @@ export function DrawingCollection() {
         ? '?'
         : DRAWING_BUILD_HINTS[drawing.id] ?? 'A matching all-around build',
     }));
-  }, [drawingStats, ownedMarketDrawingIds]);
+    return [...customDrawings, ...standardDrawings];
+  }, [customRequests, drawingStats, ownedMarketDrawingIds]);
 
   const selectedDrawing = drawings.find(drawing => drawing.id === selectedDrawingId);
 
@@ -125,6 +147,11 @@ export function DrawingCollection() {
   if (!builds || !drawingStats || !customRequests) return <div className="notice">Loading drawings…</div>;
 
   const collectedCount = drawings.filter(drawing => drawing.unlocked).length;
+  const unfinishedCustomRequests = customRequests.filter(
+    request => request.status !== 'fulfilled' || !request.finalDrawingSrc,
+  );
+  const fulfilledCustomDrawings = drawings.filter(drawing => drawing.custom);
+  const standardDrawings = drawings.filter(drawing => !drawing.custom);
 
   const deleteRejectedRequest = async (request: MarketDrawingRequest) => {
     if (request.status !== 'rejected') return;
@@ -149,14 +176,31 @@ export function DrawingCollection() {
         <p>{collectedCount}/{drawings.length} collected</p>
       </div>
       <div className="drawing-collection-grid">
-        {customRequests.map(request => (
+        {fulfilledCustomDrawings.map(drawing => {
+          const drawingLabel = drawing.custom
+            ? drawing.name
+            : `player drawing ${drawing.number}`;
+
+          return (
+            <button
+              aria-label={drawing.collected
+                ? `See collection stats for ${drawingLabel}`
+                : drawing.marketUnlocked
+                  ? `See unlock details for ${drawingLabel}`
+                  : `See how to unlock ${drawingLabel}`}
+              className={`drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`}
+              key={drawing.id}
+              onClick={() => setSelectedDrawingId(drawing.id)}
+              type="button"
+            >
+              <img src={drawing.src} alt={drawing.custom ? drawing.name : `Player drawing ${drawing.number}`} />
+            </button>
+          );
+        })}
+        {unfinishedCustomRequests.map(request => (
           <div className="drawing-collection-item custom-drawing-placeholder" key={request.id}>
             <div className="custom-drawing-placeholder-art">
-              {request.finalDrawingSrc ? (
-                <img src={request.finalDrawingSrc} alt="" />
-              ) : (
-                <span>?</span>
-              )}
+              <span>?</span>
             </div>
             <b>{request.finalName || request.subject}</b>
             <small>{request.statusLabel}</small>
@@ -172,24 +216,22 @@ export function DrawingCollection() {
             )}
           </div>
         ))}
-        {drawings.map(drawing => {
-          const drawingImage = (
-            <img src={drawing.src} alt={`Player drawing ${drawing.number}`} />
-          );
+        {standardDrawings.map(drawing => {
+          const drawingLabel = `player drawing ${drawing.number}`;
 
           return (
             <button
               aria-label={drawing.collected
-                ? `See collection stats for player drawing ${drawing.number}`
+                ? `See collection stats for ${drawingLabel}`
                 : drawing.marketUnlocked
-                  ? `See unlock details for player drawing ${drawing.number}`
-                  : `See how to unlock player drawing ${drawing.number}`}
+                  ? `See unlock details for ${drawingLabel}`
+                  : `See how to unlock ${drawingLabel}`}
               className={`drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`}
               key={drawing.id}
               onClick={() => setSelectedDrawingId(drawing.id)}
               type="button"
             >
-              {drawingImage}
+              <img src={drawing.src} alt={`Player drawing ${drawing.number}`} />
             </button>
           );
         })}
@@ -244,7 +286,7 @@ export function DrawingCollection() {
                 <dl className="drawing-hint-details">
                   <div>
                     <dt>Source</dt>
-                    <dd>Golden State Bundle</dd>
+                    <dd>{selectedDrawing.custom ? 'Custom Drawing' : 'Golden State Bundle'}</dd>
                   </div>
                   <div>
                     <dt>Use it</dt>
