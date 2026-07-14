@@ -35,6 +35,21 @@ const drawingRequestSchema = z.object({
 
 const PHOTO_DATA_URL_RE = /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/=]+$/i;
 
+const DEFAULT_STRIPE_PAYMENT_LINKS = {
+  goldenStateBundle: 'https://buy.stripe.com/8x27sLdsa9QZ5QQgOqf7i00',
+  proPlayerRequest: 'https://buy.stripe.com/9B6aEXafY0gp3IIeGif7i01',
+  photoDrawingRequest: 'https://buy.stripe.com/14A8wP1Js3sBgvu69Mf7i02',
+};
+
+type StripePaymentLinkKey = keyof typeof DEFAULT_STRIPE_PAYMENT_LINKS;
+
+function stripePaymentLink(key: StripePaymentLinkKey): string {
+  const runtimeConfig = config as typeof config & {
+    stripePaymentLinks?: Partial<Record<StripePaymentLinkKey, string>>;
+  };
+  return runtimeConfig.stripePaymentLinks?.[key] || DEFAULT_STRIPE_PAYMENT_LINKS[key];
+}
+
 const adminStatusSchema = z.object({
   status: z.enum(['paid', 'in_review', 'in_progress', 'rejected']),
   adminNote: z.string().trim().max(600).optional(),
@@ -138,8 +153,8 @@ function stripePriceForDrawingRequest(type: DrawingRequestType): string {
 
 function paymentLinkForDrawingRequest(type: DrawingRequestType): string {
   return type === 'pro-player'
-    ? config.stripePaymentLinks.proPlayerRequest
-    : config.stripePaymentLinks.photoDrawingRequest;
+    ? stripePaymentLink('proPlayerRequest')
+    : stripePaymentLink('photoDrawingRequest');
 }
 
 function checkoutReferenceForBundle(userId: string, bundleId: string): string {
@@ -288,12 +303,13 @@ marketRouter.post('/bundles/:id/purchase', requireAuth, async (req, res, next) =
       return;
     }
 
-    if (config.stripePaymentLinks.goldenStateBundle) {
+    const bundlePaymentLink = stripePaymentLink('goldenStateBundle');
+    if (bundlePaymentLink) {
       res.json({
         bundle,
         ownedBundleIds: await ownedBundleIds(req.user!.id),
         checkoutUrl: checkoutUrlForPaymentLink(
-          config.stripePaymentLinks.goldenStateBundle,
+          bundlePaymentLink,
           checkoutReferenceForBundle(req.user!.id, bundle.id),
         ),
       });
