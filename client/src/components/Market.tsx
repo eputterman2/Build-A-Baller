@@ -21,6 +21,9 @@ type DrawingRequestType = 'pro-player' | 'photo-player';
 type MarketDisclaimer =
   | { type: 'bundle'; bundle: MarketBundle }
   | { type: DrawingRequestType };
+type PendingCheckout =
+  | { type: 'bundle'; bundleId: string }
+  | { type: 'drawing-request'; requestId: string; requestType: DrawingRequestType };
 
 function readImageDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -49,6 +52,7 @@ export function Market() {
   const [requestMessage, setRequestMessage] = useState<string | null>(null);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [disclaimer, setDisclaimer] = useState<MarketDisclaimer | null>(null);
+  const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
 
   useEffect(() => {
     const checkout = new URLSearchParams(window.location.search).get('checkout');
@@ -66,19 +70,77 @@ export function Market() {
     }
   }, []);
 
-  const refresh = () => {
-    setLoading(true);
+  const loadMarket = (silent = false) => {
+    if (!silent) setLoading(true);
     setError(null);
-    api.marketBundles()
+    return api.marketBundles()
       .then(data => {
         setBundles(data.bundles);
         setOwnedBundleIds(data.ownedBundleIds);
+        return data;
       })
       .catch(err => setError((err as Error).message))
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (!silent) setLoading(false);
+      });
   };
 
-  useEffect(refresh, [user]);
+  useEffect(() => {
+    loadMarket();
+  }, [user]);
+
+  useEffect(() => {
+    if (!pendingCheckout) return undefined;
+
+    let cancelled = false;
+    let attempts = 0;
+    const maxAttempts = 40;
+
+    const poll = async () => {
+      if (cancelled) return;
+      attempts += 1;
+      try {
+        if (pendingCheckout.type === 'bundle') {
+          const data = await loadMarket(true);
+          if (data?.ownedBundleIds.includes(pendingCheckout.bundleId)) {
+            setMessage(BUNDLE_SUCCESS_MESSAGE);
+            setPendingCheckout(null);
+            return;
+          }
+        } else {
+          const requests = await api.drawingRequests();
+          const request = requests.find(item => item.id === pendingCheckout.requestId);
+          if (request && request.status !== 'pending_checkout') {
+            setRequestMessage(DRAWING_SUCCESS_MESSAGE);
+            if (pendingCheckout.requestType === 'pro-player') setProPlayerName('');
+            else {
+              setPhotoSubject('');
+              setPhotoDataUrl('');
+              setPhotoFileName('');
+            }
+            setPendingCheckout(null);
+            return;
+          }
+        }
+      } catch {
+        // Keep polling; Stripe webhooks can arrive a few seconds after checkout.
+      }
+      if (!cancelled && attempts < maxAttempts) {
+        window.setTimeout(poll, 3000);
+      }
+    };
+
+    const timeoutId = window.setTimeout(poll, 3000);
+    const onFocus = () => {
+      void poll();
+    };
+    window.addEventListener('focus', onFocus);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, [pendingCheckout]);
 
   const openBundleDisclaimer = (bundle: MarketBundle) => {
     if (!user) {
@@ -89,19 +151,30 @@ export function Market() {
   };
 
   const buy = async (bundle: MarketBundle) => {
+    const checkoutWindow = window.open('about:blank', '_blank');
     setBusyId(bundle.id);
     setMessage(null);
     setError(null);
     try {
       const result = await api.purchaseBundle(bundle.id);
       if (result.checkoutUrl) {
-        window.location.assign(result.checkoutUrl);
+        if (checkoutWindow) {
+          checkoutWindow.opener = null;
+          checkoutWindow.location.href = result.checkoutUrl;
+          setPendingCheckout({ type: 'bundle', bundleId: bundle.id });
+          setMessage('Stripe checkout opened in a new tab. This page will update after payment.');
+          setDisclaimer(null);
+        } else {
+          window.location.assign(result.checkoutUrl);
+        }
         return;
       }
+      checkoutWindow?.close();
       setOwnedBundleIds(result.ownedBundleIds);
       setMessage(BUNDLE_SUCCESS_MESSAGE);
       setDisclaimer(null);
     } catch (err) {
+      checkoutWindow?.close();
       setError((err as Error).message);
     } finally {
       setBusyId(null);
@@ -153,6 +226,7 @@ export function Market() {
 
   const submitDrawingRequest = async (type: DrawingRequestType) => {
     const subject = (type === 'pro-player' ? proPlayerName : photoSubject).trim();
+    const checkoutWindow = window.open('about:blank', '_blank');
     setRequestBusyId(type);
     setRequestMessage(null);
     setRequestError(null);
@@ -163,9 +237,22 @@ export function Market() {
         photoDataUrl: type === 'photo-player' ? photoDataUrl : undefined,
       });
       if (result.checkoutUrl) {
-        window.location.assign(result.checkoutUrl);
+        if (checkoutWindow) {
+          checkoutWindow.opener = null;
+          checkoutWindow.location.href = result.checkoutUrl;
+          setPendingCheckout({
+            type: 'drawing-request',
+            requestId: result.request.id,
+            requestType: type,
+          });
+          setRequestMessage('Stripe checkout opened in a new tab. This page will update after payment.');
+          setDisclaimer(null);
+        } else {
+          window.location.assign(result.checkoutUrl);
+        }
         return;
       }
+      checkoutWindow?.close();
       setRequestMessage(DRAWING_SUCCESS_MESSAGE);
       if (type === 'pro-player') setProPlayerName('');
       else {
@@ -175,6 +262,7 @@ export function Market() {
       }
       setDisclaimer(null);
     } catch (err) {
+      checkoutWindow?.close();
       setRequestError((err as Error).message);
     } finally {
       setRequestBusyId(null);
