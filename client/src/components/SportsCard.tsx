@@ -16,7 +16,7 @@ interface SportsCardProps {
 }
 
 const flagSrc = (file: string) =>
-  `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=96`;
+  `/api/flags/${encodeURIComponent(file)}?width=96`;
 
 const LEGACY_COUNTRY_NAMES: Record<string, string> = {
   america: 'United States',

@@ -1401,9 +1401,19 @@ button.drawing-collection-item:focus-visible {
   .market-bundle { padding: 12px; }
   .market-bundle-art { min-height: 220px; }
   .market-bundle-items { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .photo-request-example { grid-template-columns: 1fr; }
+  .photo-request-example { grid-template-columns: 1fr; row-gap: 14px; }
   .photo-request-arrow {
-    height: 26px; transform: rotate(90deg); width: 42px; justify-self: center;
+    height: 30px; width: 22px; justify-self: center; margin: 2px 0; transform: none;
+  }
+  .photo-request-arrow::before {
+    left: 50%; right: auto; top: 0; bottom: 11px;
+    border-top: 0; border-left: 2.5px solid var(--ink);
+    transform: translateX(-50%);
+  }
+  .photo-request-arrow::after {
+    left: 50%; right: auto; top: auto; bottom: 1px; width: 8px; height: 8px;
+    border-top: 0; border-right: 2.5px solid var(--ink); border-bottom: 2.5px solid var(--ink);
+    transform: translateX(-50%) rotate(45deg);
   }
 }
 .lb-row { display: grid; grid-template-columns: 36px 1fr auto 52px 48px; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 2px solid var(--divider); }

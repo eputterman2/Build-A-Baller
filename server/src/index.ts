@@ -10,6 +10,7 @@ import { playersRouter } from './routes/players';
 import { buildsRouter } from './routes/builds';
 import { pollsRouter } from './routes/polls';
 import { feedbackRouter } from './routes/feedback';
+import { flagsRouter } from './routes/flags';
 import { marketRouter, stripeWebhookHandler } from './routes/market';
 import { backfillBuildRankMetrics } from './rankings';
 
@@ -44,6 +45,7 @@ async function main(): Promise<void> {
   app.use('/api/polls', pollsRouter);
   app.use('/api/feedback', feedbackRouter);
   app.use('/api/market', marketRouter);
+  app.use('/api/flags', flagsRouter);
 
   // In production, serve the built React app and let it handle client routing.
   if (config.clientDist) {

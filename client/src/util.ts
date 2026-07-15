@@ -59,20 +59,39 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeout = window.setTimeout(() => reject(new Error(label)), ms);
+    promise
+      .then(resolve, reject)
+      .finally(() => window.clearTimeout(timeout));
+  });
+}
+
+async function fetchImage(src: string): Promise<Response> {
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 4500);
+  try {
+    return await fetch(src, { cache: 'force-cache', signal: controller.signal });
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
 async function inlineExportImages(root: HTMLElement): Promise<() => void> {
   const restores: Array<() => void> = [];
   const images = [...root.querySelectorAll<HTMLImageElement>('img')];
 
-  await Promise.all(images.map(async img => {
+  await Promise.allSettled(images.map(async img => {
     const src = img.currentSrc || img.src;
     if (!src || src.startsWith('data:')) return;
 
     const previousSrc = img.getAttribute('src');
     const previousSrcset = img.getAttribute('srcset');
     try {
-      const response = await fetch(src, { cache: 'force-cache' });
+      const response = await fetchImage(src);
       if (!response.ok) return;
-      const dataUrl = await blobToDataUrl(await response.blob());
+      const dataUrl = await withTimeout(blobToDataUrl(await response.blob()), 2500, 'Image export timed out');
       restores.push(() => {
         if (previousSrc == null) img.removeAttribute('src');
         else img.setAttribute('src', previousSrc);
@@ -81,9 +100,9 @@ async function inlineExportImages(root: HTMLElement): Promise<() => void> {
       });
       img.removeAttribute('srcset');
       img.src = dataUrl;
-      await img.decode().catch(() => {});
+      await withTimeout(img.decode().catch(() => {}), 1200, 'Image decode timed out').catch(() => {});
     } catch {
-      // Cross-origin flags or optional accessories can stay as-is if they cannot be inlined.
+      // If one optional image is slow or unavailable, keep exporting the rest of the card.
     }
   }));
 
@@ -159,13 +178,17 @@ export async function downloadCardImage(cardId: string, fileName: string): Promi
     restoreImages = await inlineExportImages(front);
     restorePlayerArt = lockContainedPlayerArt(front);
     await new Promise(requestAnimationFrame);
-    const canvas = await html2canvas(front, {
-      backgroundColor: null,
-      scale: 3,
-      useCORS: true,
-      allowTaint: true,
-      logging: false,
-    });
+    const canvas = await withTimeout(
+      html2canvas(front, {
+        backgroundColor: null,
+        scale: 3,
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+      }),
+      15000,
+      'Card export timed out',
+    );
     const dataUrl = canvas.toDataURL('image/png');
 
     const link = document.createElement('a');
