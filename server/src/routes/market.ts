@@ -129,7 +129,7 @@ function mapDrawingRequest(row: DrawingRequestRow, includePhoto = false) {
     priceCents: row.price_cents,
     stripeSessionId: row.stripe_session_id,
     status: row.status,
-    statusLabel: requestStatusLabel(row.status),
+    statusLabel: completed ? 'Published' : requestStatusLabel(row.status),
     paidAt: row.paid_at,
     adminNote: row.admin_note,
     finalName: row.final_name,

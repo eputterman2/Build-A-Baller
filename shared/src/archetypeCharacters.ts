@@ -26,7 +26,7 @@ const character = (
   archetypes,
   minOverall,
   maxOverall,
-  src: `/archetype-players/${id}.png?v=7`,
+  src: `/archetype-players/${id}.png?v=9`,
 });
 
 const LOWEST = 0;
@@ -387,6 +387,37 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], LOWEST, 84),
+  character('c1-left', 'Powerhouse Post', [
+    '99 Overall',
+    'GOAT',
+    'Interior Hub',
+    'Rim-Running Anchor',
+    'Bruising Post Scorer',
+    'Defensive Playmaker',
+    'Lockdown Slasher',
+    'Athletic Finisher',
+    'Complete Star',
+  ], 99, 99),
+  character('c1-middle', 'Final Boss', [
+    '99 Overall',
+    'GOAT',
+    'Shot-Creating Sniper',
+    'Movement Shooter',
+    'Three-Level Scorer',
+    'Skilled Shot Maker',
+    'Slashing Playmaker',
+    'Athletic Finisher',
+    'Complete Star',
+  ], 99, 99),
+  character('c1-right', 'Pocket Maestro', [
+    'Pocket Blur',
+    'Floor General',
+    'Slashing Playmaker',
+    'Skilled Shot Maker',
+    'Movement Shooter',
+    'Bench Spark',
+    'Balanced Starter',
+  ], 80, 85),
   character('gs-sharpshooter', 'Bay Sniper', [
     'Shot-Creating Sniper',
     'Movement Shooter',

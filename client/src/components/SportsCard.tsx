@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ACCESSORIES_BY_ID, CATEGORIES, COMMON_COUNTRIES, analyzeBuild, buildArchetype, gradeFor,
@@ -39,6 +39,8 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   const grade = gradeFor(build.overall);
   const archetype = buildArchetype(build.result);
   const character = resolveArchetypeCharacter(build.result, build.picks, build.characterId);
+  const fallbackCharacter = resolveArchetypeCharacter(build.result, build.picks, null);
+  const [artSrc, setArtSrc] = useState(character.src);
   const analysis = analyzeBuild(build.result);
   const topStrengths = analysis.strengths.slice(0, 2);
   const topWeakness = analysis.weaknesses[0];
@@ -52,7 +54,16 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   const cardBanner = selectedAccessories?.cardBannerId ? ACCESSORIES_BY_ID[selectedAccessories.cardBannerId] : null;
   const cardTier = isCustomCharacterId(build.characterId) ? 'onyx' : overallTier(build.overall);
   const cardViewTo = viewTo ?? `/build/${build.id}`;
+  const artCharacterId = artSrc === character.src ? character.id : fallbackCharacter.id;
+  useEffect(() => {
+    setArtSrc(character.src);
+  }, [character.src]);
   const toggleFlip = () => setFlipped(v => !v);
+  const recoverCardArt = () => {
+    setArtSrc(current => current === fallbackCharacter.src
+      ? '/archetype-players/b1-top-left.png?v=7'
+      : fallbackCharacter.src);
+  };
   const toggleFromKeyboard = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     e.preventDefault();
@@ -104,8 +115,11 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
             )}
             <img
               className="card-player-art"
-              src={character.src}
-              data-character={character.id}
+              src={artSrc}
+              data-character={artCharacterId}
+              loading="eager"
+              decoding="async"
+              onError={recoverCardArt}
               alt=""
             />
             <div className="card-front-identity">
