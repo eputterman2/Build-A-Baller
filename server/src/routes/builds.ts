@@ -4,7 +4,8 @@ import { z } from 'zod';
 import {
   ACCESSORIES_BY_ID, ARCHETYPE_CHARACTER_RULES, ATTRIBUTES, EMPTY_BUILD_ACCESSORIES,
   EMPTY_PLAYER_IDENTITY, MARKET_BUNDLES_BY_ID, PLAYERS_BY_ID,
-  buildRankMetrics, customCharacterId, customCharacterImageSrc, customCharacterRequestId,
+  buildArchetype, buildRankMetrics, customCharacterId, customCharacterImageSrc, customCharacterRequestId,
+  customDrawingMatchesArchetype,
   getArchetypeCharacterById, gradeFor, inCharacterOverallRange, isCustomCharacterId,
   normalizePlayerIdentity, scoreBuild, selectArchetypeCharacter,
   type AccessoryType, type AttributeKey, type BuildAccessories, type BuildDetail, type BuildSummary, type CollectionBuild, type PlayerOfDay,
@@ -97,6 +98,10 @@ interface CustomDrawingRow {
 
 function isCustomDrawingEligible(row: CustomDrawingRow, overall: number): boolean {
   return overall >= row.min_overall && overall <= row.max_overall;
+}
+
+function isCustomDrawingBuildMatch(row: CustomDrawingRow, result: ScoreResult): boolean {
+  return customDrawingMatchesArchetype(row.build_hint, buildArchetype(result));
 }
 
 async function getCompletedCustomDrawing(
@@ -220,6 +225,9 @@ async function normalizeCharacterIdForBuild(
     if (!isCustomDrawingEligible(custom, result.overall)) {
       return { characterId: defaultCharacterId, error: 'That custom drawing is not eligible for this overall.' };
     }
+    if (!isCustomDrawingBuildMatch(custom, result)) {
+      return { characterId: defaultCharacterId, error: 'That custom drawing is not eligible for this build type.' };
+    }
     return { characterId: requested, error: null };
   }
 
@@ -259,6 +267,7 @@ function rowToSummary(row: BuildRow): BuildSummary {
       cardBannerId: row.card_banner_id ?? '',
     },
     characterId: characterIdForBuild(row.result, row.picks, row.character_id),
+    originalOwnerDrawing: Boolean(row.original_owner_drawing),
   };
 }
 
@@ -297,6 +306,7 @@ interface BuildRow {
   place?: number | string;
   win_date?: string;
   total_wins?: number | string;
+  original_owner_drawing?: boolean;
 }
 
 interface DrawingBuildRow {
@@ -324,6 +334,35 @@ async function awardPlayerOfDayWinIfCurrentTop(buildId: string): Promise<void> {
      ON CONFLICT (build_id) DO NOTHING`,
     [randomUUID(), buildId],
   );
+}
+
+async function isOriginalOwnerDrawing(characterId: string, userId: string): Promise<boolean> {
+  if (!isCustomCharacterId(characterId)) return false;
+  const result = await query<{ is_owner: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM market_drawing_requests
+       WHERE id = $1 AND user_id = $2
+     ) AS is_owner`,
+    [customCharacterRequestId(characterId), userId],
+  );
+  return Boolean(result.rows[0]?.is_owner);
+}
+
+function originalOwnerDrawingSql(alias = 'b'): string {
+  return `
+  CASE
+    WHEN ${alias}.character_id LIKE 'custom:%'
+     AND EXISTS (
+       SELECT 1
+       FROM market_drawing_requests mdr
+       WHERE mdr.id = substring(${alias}.character_id from 8)
+         AND mdr.user_id = ${alias}.user_id
+     )
+    THEN TRUE
+    ELSE FALSE
+  END AS original_owner_drawing
+`;
 }
 
 // Submit a finished build. Scoring is recomputed server-side from the chosen
@@ -397,6 +436,7 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
        rankMetrics.totalStats, rankMetrics.allStarCount, RANK_METRICS_VERSION],
     );
     await awardPlayerOfDayWinIfCurrentTop(id);
+    const originalOwnerDrawing = await isOriginalOwnerDrawing(characterId, req.user!.id);
 
     res.status(201).json({
       build: {
@@ -406,6 +446,7 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
         identity,
         accessories,
         characterId,
+        originalOwnerDrawing,
         result, picks,
       } satisfies BuildDetail,
     });
@@ -431,12 +472,13 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
        )
-       SELECT id, username, overall, grade, grade_label, created_at,
-              player_name, motto, country, picks, result,
-              user_icon_id, card_frame_id, card_banner_id, character_id
-       FROM user_ranked
-       WHERE user_place <= $2
-       ORDER BY overall DESC, total_stats DESC, all_star_count DESC, created_at DESC
+       SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
+              ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
+              ur.user_icon_id, ur.card_frame_id, ur.card_banner_id, ur.character_id,
+              ${originalOwnerDrawingSql('ur')}
+       FROM user_ranked ur
+       WHERE ur.user_place <= $2
+       ORDER BY ur.overall DESC, ur.total_stats DESC, ur.all_star_count DESC, ur.created_at DESC
        LIMIT $1`,
       [limit, GLOBAL_CARDS_PER_USER],
     );
@@ -450,9 +492,10 @@ buildsRouter.get('/player-of-day', async (req, res, next) => {
   try {
     const dateResult = await query<{ day: string }>('SELECT CURRENT_DATE::text AS day');
     const result = await query<BuildRow>(
-      `SELECT b.id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country, b.picks, b.result,
-              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id
+              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
+              ${originalOwnerDrawingSql('b')}
        FROM builds b JOIN users u ON u.id = b.user_id
        WHERE b.created_at >= CURRENT_DATE
          AND b.created_at < CURRENT_DATE + INTERVAL '1 day'
@@ -489,9 +532,10 @@ buildsRouter.get('/player-of-day-leaderboard', async (_req, res, next) => {
 buildsRouter.get('/mine', requireAuth, async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
-      `SELECT b.id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country,
-              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id
+              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
+              ${originalOwnerDrawingSql('b')}
        FROM builds b JOIN users u ON u.id = b.user_id
        WHERE b.user_id = $1
        ORDER BY b.created_at DESC LIMIT 50`,
@@ -527,6 +571,7 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
        SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
               ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
               ur.user_icon_id, ur.card_frame_id, ur.card_banner_id, ur.character_id,
+              ${originalOwnerDrawingSql('ur')},
               CASE WHEN gr.place <= $3 THEN gr.place ELSE NULL END AS place
        FROM user_ranked ur
        LEFT JOIN global_ranked gr ON gr.id = ur.id
@@ -601,6 +646,7 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
   try {
     const overall = Number(req.query.overall);
     const currentCharacterId = typeof req.query.current === 'string' ? req.query.current : '';
+    const archetype = typeof req.query.archetype === 'string' ? req.query.archetype : '';
     if (!Number.isFinite(overall)) {
       res.status(400).json({ error: 'Missing overall.' });
       return;
@@ -630,7 +676,8 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
         minOverall: drawing.min_overall,
         maxOverall: drawing.max_overall,
         owned: true,
-        eligible: isCustomDrawingEligible(drawing, overall),
+        eligible: isCustomDrawingEligible(drawing, overall)
+          && (!archetype || customDrawingMatchesArchetype(drawing.build_hint, archetype)),
         current: id === currentCharacterId,
       });
     }
@@ -669,6 +716,7 @@ buildsRouter.get('/player-of-day-wins', requireAuth, async (req, res, next) => {
       `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label,
               b.created_at, b.player_name, b.motto, b.country, b.picks, b.result,
               b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
+              ${originalOwnerDrawingSql('b')},
               w.win_date::text AS win_date,
               COUNT(*) OVER () AS total_wins
        FROM player_of_day_wins w
@@ -785,7 +833,10 @@ buildsRouter.patch('/:id/character', requireAuth, async (req, res, next) => {
       res.status(404).json({ error: 'Build not found' });
       return;
     }
-    res.json({ characterId: result.rows[0].character_id });
+    res.json({
+      characterId: result.rows[0].character_id,
+      originalOwnerDrawing: await isOriginalOwnerDrawing(result.rows[0].character_id, req.user!.id),
+    });
   } catch (err) { next(err); }
 });
 
@@ -808,9 +859,10 @@ buildsRouter.delete('/:id', requireAuth, async (req, res, next) => {
 buildsRouter.get('/:id', async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
-      `SELECT b.id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country, b.picks, b.result,
-              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id
+              b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
+              ${originalOwnerDrawingSql('b')}
        FROM builds b JOIN users u ON u.id = b.user_id
        WHERE b.id = $1`,
       [req.params.id],

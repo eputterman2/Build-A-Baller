@@ -100,6 +100,7 @@ CREATE TABLE IF NOT EXISTS market_drawing_requests (
   min_overall    INTEGER NOT NULL DEFAULT 0,
   max_overall    INTEGER NOT NULL DEFAULT 99,
   build_hint     TEXT NOT NULL DEFAULT '',
+  admin_hidden   BOOLEAN NOT NULL DEFAULT FALSE,
   fulfilled_at   TIMESTAMPTZ,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -113,6 +114,7 @@ ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS visibility TEXT NOT
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS min_overall INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS max_overall INTEGER NOT NULL DEFAULT 99;
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS build_hint TEXT NOT NULL DEFAULT '';
+ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS fulfilled_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS builds_overall_idx ON builds (overall DESC, created_at DESC);

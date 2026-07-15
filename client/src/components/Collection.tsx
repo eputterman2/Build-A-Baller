@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ARCHETYPE_CHARACTER_RULES, getArchetypeCharacterById, resolveArchetypeCharacter,
+  ARCHETYPE_CHARACTER_RULES, buildArchetype, getArchetypeCharacterById, resolveArchetypeCharacter,
   type CollectionBuild, type DrawingOption, type PlayerIdentity,
 } from '@shared/index';
 import { useAuth } from '../auth';
 import { api } from '../api';
+import { downloadCardImage, shareCardLink } from '../util';
 import { AuthModal } from './AuthModal';
 import { SaveIdentityModal } from './SaveIdentityModal';
 import { SportsCard } from './SportsCard';
@@ -23,6 +24,8 @@ export function Collection() {
   const [savingEdit, setSavingEdit] = useState(false);
   const [editCharacterId, setEditCharacterId] = useState('');
   const [editDrawingOptions, setEditDrawingOptions] = useState<DrawingOption[]>([]);
+  const [shareStatus, setShareStatus] = useState<{ id: string; label: string } | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<{ id: string; label: string } | null>(null);
 
   useEffect(() => {
     if (!user) {
@@ -61,12 +64,20 @@ export function Collection() {
     try {
       const updated = await api.updateBuildIdentity(editingBuild.id, identity);
       const nextCharacterId = editCharacterId || editingBuild.characterId;
-      const savedCharacterId = nextCharacterId !== editingBuild.characterId
+      const characterUpdate = nextCharacterId !== editingBuild.characterId
         ? await api.updateBuildCharacter(editingBuild.id, nextCharacterId)
-        : editingBuild.characterId;
+        : {
+          characterId: editingBuild.characterId,
+          originalOwnerDrawing: editingBuild.originalOwnerDrawing,
+        };
       setBuilds(current => current?.map(build =>
         build.id === editingBuild.id
-          ? { ...build, identity: updated, characterId: savedCharacterId }
+          ? {
+            ...build,
+            identity: updated,
+            characterId: characterUpdate.characterId,
+            originalOwnerDrawing: characterUpdate.originalOwnerDrawing,
+          }
           : build,
       ) ?? current);
       setEditingBuild(null);
@@ -75,6 +86,37 @@ export function Collection() {
       throw err;
     } finally {
       setSavingEdit(false);
+    }
+  };
+
+  const shareBuild = async (build: CollectionBuild) => {
+    const archetype = buildArchetype(build.result);
+    const cardName = build.identity?.playerName || archetype;
+    const url = `${window.location.origin}/build/${build.id}?from=collection`;
+    try {
+      const result = await shareCardLink({
+        url,
+        title: `${build.overall} OVR ${cardName}`,
+        text: `I built a ${build.overall} OVR ${cardName} in Build-A-Baller. Can you beat it?`,
+      });
+      setShareStatus({ id: build.id, label: result === 'copied' ? 'Copied!' : 'Shared!' });
+      setTimeout(() => setShareStatus(null), 1500);
+    } catch {
+      // Users can cancel the native share sheet; no need to show an error.
+    }
+  };
+
+  const downloadBuild = async (build: CollectionBuild) => {
+    const archetype = buildArchetype(build.result);
+    const cardName = build.identity?.playerName || archetype;
+    try {
+      setDownloadStatus({ id: build.id, label: 'Saving...' });
+      await downloadCardImage(build.id, `${build.overall} OVR ${cardName}`);
+      setDownloadStatus({ id: build.id, label: 'Saved!' });
+      setTimeout(() => setDownloadStatus(null), 1500);
+    } catch {
+      setDownloadStatus({ id: build.id, label: 'Try Again' });
+      setTimeout(() => setDownloadStatus(null), 1800);
     }
   };
 
@@ -103,7 +145,7 @@ export function Collection() {
     }] : []);
 
     let alive = true;
-    api.drawingOptions(editingBuild.overall, currentCharacter.id)
+    api.drawingOptions(editingBuild.overall, currentCharacter.id, buildArchetype(editingBuild.result))
       .then(options => {
         if (alive) setEditDrawingOptions(options);
       })
@@ -211,6 +253,14 @@ export function Collection() {
                   </>
                 )}
               />
+              <div className="card-export-actions">
+                <button className="btn btn-small share-card-btn" onClick={() => shareBuild(build)}>
+                  {shareStatus?.id === build.id ? shareStatus.label : 'Share'}
+                </button>
+                <button className="btn btn-small share-card-btn" onClick={() => downloadBuild(build)}>
+                  {downloadStatus?.id === build.id ? downloadStatus.label : 'Download'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

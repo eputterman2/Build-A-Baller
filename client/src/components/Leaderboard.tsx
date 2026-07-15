@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import type { BuildDetail, DrawingCollectionLeader, PlayerOfDayLeader } from '@shared/index';
+import { buildArchetype, type BuildDetail, type DrawingCollectionLeader, type PlayerOfDayLeader } from '@shared/index';
 import { api } from '../api';
+import { downloadCardImage, shareCardLink } from '../util';
 import { SportsCard } from './SportsCard';
 
 const GLOBAL_PAGE_SIZE = 9;
@@ -76,7 +77,8 @@ export function Leaderboard() {
   const [playerOfDayLeaders, setPlayerOfDayLeaders] = useState<PlayerOfDayLeader[] | null>(null);
   const [drawingLeaders, setDrawingLeaders] = useState<DrawingCollectionLeader[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [shareStatus, setShareStatus] = useState<{ id: string; label: string } | null>(null);
+  const [downloadStatus, setDownloadStatus] = useState<{ id: string; label: string } | null>(null);
   const [cardPage, setCardPage] = useState(1);
   const [leaderPage, setLeaderPage] = useState(1);
   const [drawingLeaderPage, setDrawingLeaderPage] = useState(1);
@@ -94,10 +96,34 @@ export function Leaderboard() {
   if (error) return <div className="notice error">Couldn’t load leaderboard: {error}</div>;
   if (!builds || !playerOfDayLeaders || !drawingLeaders) return <div className="notice">Loading leaderboard…</div>;
 
-  const copyBuild = (id: string) => {
-    navigator.clipboard?.writeText(`${window.location.origin}/build/${id}`);
-    setCopiedId(id);
-    setTimeout(() => setCopiedId(null), 1500);
+  const shareBuild = async (build: BuildDetail) => {
+    const archetype = buildArchetype(build.result);
+    const cardName = build.identity?.playerName || archetype;
+    const url = `${window.location.origin}/build/${build.id}`;
+    try {
+      const result = await shareCardLink({
+        url,
+        title: `${build.overall} OVR ${cardName}`,
+        text: `I built a ${build.overall} OVR ${cardName} in Build-A-Baller. Can you beat it?`,
+      });
+      setShareStatus({ id: build.id, label: result === 'copied' ? 'Copied!' : 'Shared!' });
+      setTimeout(() => setShareStatus(null), 1500);
+    } catch {
+      // Users can cancel the native share sheet; no need to show an error.
+    }
+  };
+  const downloadBuild = async (build: BuildDetail) => {
+    const archetype = buildArchetype(build.result);
+    const cardName = build.identity?.playerName || archetype;
+    try {
+      setDownloadStatus({ id: build.id, label: 'Saving...' });
+      await downloadCardImage(build.id, `${build.overall} OVR ${cardName}`);
+      setDownloadStatus({ id: build.id, label: 'Saved!' });
+      setTimeout(() => setDownloadStatus(null), 1500);
+    } catch {
+      setDownloadStatus({ id: build.id, label: 'Try Again' });
+      setTimeout(() => setDownloadStatus(null), 1800);
+    }
   };
   const cardPageCount = Math.ceil(builds.length / GLOBAL_PAGE_SIZE);
   const cardPageStart = (cardPage - 1) * GLOBAL_PAGE_SIZE;
@@ -125,9 +151,14 @@ export function Leaderboard() {
           {visibleBuilds.map((b, i) => (
             <div className="leaderboard-card-cell" key={b.id}>
               <SportsCard build={b} rank={cardPageStart + i + 1} />
-              <button className="btn btn-small share-card-btn" onClick={() => copyBuild(b.id)}>
-                {copiedId === b.id ? 'Copied!' : 'Copy Link'}
-              </button>
+              <div className="card-export-actions">
+                <button className="btn btn-small share-card-btn" onClick={() => shareBuild(b)}>
+                  {shareStatus?.id === b.id ? shareStatus.label : 'Share'}
+                </button>
+                <button className="btn btn-small share-card-btn" onClick={() => downloadBuild(b)}>
+                  {downloadStatus?.id === b.id ? downloadStatus.label : 'Download'}
+                </button>
+              </div>
             </div>
           ))}
         </div>

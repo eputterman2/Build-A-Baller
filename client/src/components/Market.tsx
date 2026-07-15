@@ -46,8 +46,12 @@ function rememberPendingCheckout(checkout: PendingCheckout) {
   localStorage.setItem(PENDING_CHECKOUT_STORAGE_KEY, JSON.stringify(checkout));
 }
 
-function reloadWithCheckoutConfirmation(checkout: 'bundle-success' | 'drawing-success') {
+function forgetPendingCheckout() {
   localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+}
+
+function reloadWithCheckoutConfirmation(checkout: 'bundle-success' | 'drawing-success') {
+  forgetPendingCheckout();
   const url = new URL(window.location.href);
   url.searchParams.set('checkout', checkout);
   window.location.replace(url.toString());
@@ -112,23 +116,43 @@ export function Market() {
   const [disclaimer, setDisclaimer] = useState<MarketDisclaimer | null>(null);
   const [pendingCheckout, setPendingCheckout] = useState<PendingCheckout | null>(null);
 
+  const clearPendingCheckout = (checkout: PendingCheckout) => {
+    forgetPendingCheckout();
+    setPendingCheckout(current => {
+      if (!current) return current;
+      if (current.type !== checkout.type || current.userId !== checkout.userId) return current;
+      if (current.type === 'bundle' && checkout.type === 'bundle' && current.bundleId !== checkout.bundleId) return current;
+      if (current.type === 'drawing-request' && checkout.type === 'drawing-request' && current.requestId !== checkout.requestId) return current;
+      return null;
+    });
+  };
+
+  const dismissPendingCheckoutNotice = (checkout: PendingCheckout) => {
+    forgetPendingCheckout();
+    if (checkout.type === 'bundle') {
+      setMessage(current => current === 'Stripe checkout opened in a new tab. This page will update after payment.' ? null : current);
+    } else {
+      setRequestMessage(current => current === 'Stripe checkout opened in a new tab. This page will update after payment.' ? null : current);
+    }
+  };
+
   useEffect(() => {
     const checkout = new URLSearchParams(window.location.search).get('checkout');
     if (checkout === 'bundle-success') {
       setMessage(BUNDLE_SUCCESS_MESSAGE);
-      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      forgetPendingCheckout();
     }
     if (checkout === 'drawing-success') {
       setRequestMessage(DRAWING_SUCCESS_MESSAGE);
-      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      forgetPendingCheckout();
     }
     if (checkout === 'success') {
       setMessage('Thank you for your purchase! Your market item will be available shortly.');
-      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      forgetPendingCheckout();
     }
     if (checkout === 'cancelled') {
       setError('Checkout was cancelled.');
-      localStorage.removeItem(PENDING_CHECKOUT_STORAGE_KEY);
+      forgetPendingCheckout();
     }
     if (checkout) {
       const cleanUrl = new URL(window.location.href);
@@ -164,11 +188,6 @@ export function Market() {
     const stored = storedPendingCheckout(user.id);
     if (stored) {
       setPendingCheckout(stored);
-      if (stored.type === 'bundle') {
-        setMessage('Confirming your Stripe purchase...');
-      } else {
-        setRequestMessage('Confirming your Stripe purchase...');
-      }
     }
   }, [user]);
 
@@ -206,6 +225,8 @@ export function Market() {
       }
       if (!cancelled && attempts < maxAttempts) {
         window.setTimeout(poll, 3000);
+      } else if (!cancelled) {
+        clearPendingCheckout(pendingCheckout);
       }
     };
 
@@ -225,6 +246,17 @@ export function Market() {
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, [pendingCheckout]);
+
+  const watchCheckoutWindow = (checkoutWindow: Window | null, checkout: PendingCheckout) => {
+    if (!checkoutWindow) return;
+    const intervalId = window.setInterval(() => {
+      if (!checkoutWindow.closed) return;
+      window.clearInterval(intervalId);
+      window.setTimeout(() => {
+        dismissPendingCheckoutNotice(checkout);
+      }, 4000);
+    }, 1000);
+  };
 
   const openBundleDisclaimer = (bundle: MarketBundle) => {
     if (!user) {
@@ -250,6 +282,7 @@ export function Market() {
         };
         rememberPendingCheckout(checkout);
         setPendingCheckout(checkout);
+        watchCheckoutWindow(checkoutWindow, checkout);
         if (checkoutWindow) {
           checkoutWindow.location.href = result.checkoutUrl;
           setMessage('Stripe checkout opened in a new tab. This page will update after payment.');
@@ -336,6 +369,7 @@ export function Market() {
         };
         rememberPendingCheckout(checkout);
         setPendingCheckout(checkout);
+        watchCheckoutWindow(checkoutWindow, checkout);
         if (checkoutWindow) {
           checkoutWindow.location.href = result.checkoutUrl;
           setRequestMessage('Stripe checkout opened in a new tab. This page will update after payment.');

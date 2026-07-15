@@ -62,7 +62,7 @@ const adminFulfillSchema = z.object({
   visibility: z.enum(['public', 'private']),
   minOverall: z.number().int().min(0).max(99),
   maxOverall: z.number().int().min(0).max(99),
-  buildHint: z.string().trim().max(80).optional(),
+  buildHint: z.string().trim().max(180).optional(),
   adminNote: z.string().trim().max(600).optional(),
 }).refine(data => data.minOverall <= data.maxOverall, {
   message: 'Minimum overall must be lower than maximum overall.',
@@ -87,6 +87,7 @@ interface DrawingRequestRow {
   min_overall: number;
   max_overall: number;
   build_hint: string;
+  admin_hidden: boolean;
   fulfilled_at: string | null;
   created_at: string;
 }
@@ -441,6 +442,7 @@ marketRouter.get('/admin/drawing-requests', async (req, res, next) => {
        FROM market_drawing_requests r
        JOIN users u ON u.id = r.user_id
        WHERE r.status <> 'pending_payment'
+         AND r.admin_hidden = FALSE
        ORDER BY
          CASE r.status
            WHEN 'paid' THEN 0
@@ -525,6 +527,34 @@ marketRouter.post('/admin/drawing-requests/:id/fulfill', async (req, res, next) 
       return;
     }
     res.json({ request: mapDrawingRequest(row, true) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.delete('/admin/drawing-requests/:id', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const existing = await query<{ status: string }>(
+      `SELECT status
+       FROM market_drawing_requests
+       WHERE id = $1 AND status <> 'pending_payment'`,
+      [req.params.id],
+    );
+    const row = existing.rows[0];
+    if (!row) {
+      res.status(404).json({ error: 'Request not found' });
+      return;
+    }
+    if (row.status !== 'rejected') {
+      res.status(400).json({ error: 'Only rejected drawing requests can be deleted.' });
+      return;
+    }
+    await query(
+      `UPDATE market_drawing_requests
+       SET admin_hidden = TRUE
+       WHERE id = $1 AND status = 'rejected'`,
+      [req.params.id],
+    );
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

@@ -9,7 +9,7 @@ export function HowToPlayPage() {
         <p>Body choices do not have their own final score. Height, weight, and wingspan change your other stats, so a build can gain or lose points based on how well the body fits the skill set.</p>
         <p>You can use the bench slot to save one player for later, and the final gambling round lets you replace one stat if you want to take the risk.</p>
         <p>At the end, you get an overall, archetype, player drawing, strengths, weaknesses, and the option to save your card to the leaderboard.</p>
-        <Link className="btn btn-primary" to="/">Play</Link>
+        <Link className="btn btn-primary" to="/" state={{ play: Date.now() }}>Play</Link>
       </div>
     </section>
   );

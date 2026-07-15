@@ -10,6 +10,7 @@
   --blue-d: #244680;
   --ball: #ef8a2b;        /* basketball orange accent */
   --good: #1f9d63;
+  --green: #1f9d63;
   --divider: rgba(22,24,29,0.14);
   --shadow: 4px 4px 0 rgba(22,24,29,0.85);
   --shadow-sm: 3px 3px 0 rgba(22,24,29,0.8);
@@ -71,6 +72,7 @@ body {
 .btn-primary { background: var(--red); color: #fff; }
 .btn-small { padding: 7px 16px; font-size: 18px; border-radius: 10px; background: var(--blue); color: #fff; box-shadow: var(--shadow-sm); }
 .btn-danger { background: var(--red); color: #fff; }
+.btn-success { background: var(--good); color: #fff; }
 .btn-ghost { background: var(--card); color: var(--ink); }
 .link { background: none; border: none; color: var(--blue); cursor: pointer; font: inherit; font-size: 18px; text-decoration: underline; padding: 0; }
 .link:hover { color: var(--red); }
@@ -637,7 +639,8 @@ body {
 .pagination-page.is-current { background: var(--red); color: #fff; }
 .pagination-arrow:disabled { opacity: .35; cursor: default; box-shadow: none; }
 .pagination-gap { width: 20px; color: var(--muted); font-size: 20px; line-height: 1; text-align: center; }
-.share-card-btn { min-width: 116px; }
+.card-export-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.share-card-btn { min-width: 104px; }
 .collection-empty { text-align: center; max-width: 520px; margin: 20px auto; }
 .collection-empty p { font-size: 22px; line-height: 1.25; margin: -4px 0 20px; color: var(--ink); }
 .collection-summary {
@@ -956,6 +959,26 @@ button.drawing-collection-item:focus-visible {
 .card-overall span { font-family: var(--font-display); font-size: 64px; line-height: .82; }
 .card-overall small { font-size: 18px; color: var(--ink); letter-spacing: .08em; }
 .sports-card-front.has-card-frame .card-overall { top: 34px; left: 32px; }
+.card-owner-badge {
+  position: absolute; top: 98px; left: 16px; z-index: 7;
+  display: inline-flex; align-items: center; gap: 5px;
+  max-width: 118px; padding: 4px 8px 5px 6px;
+  border: 2px solid var(--ink); border-radius: 999px;
+  background: rgba(255, 250, 220, .94); color: var(--ink);
+  box-shadow: 2px 2px 0 rgba(22,24,29,.5);
+  pointer-events: none;
+}
+.card-owner-badge span {
+  color: #d6a21e; font-family: var(--font-display); font-size: 16px; line-height: .9;
+  text-shadow: 1px 1px 0 var(--ink);
+}
+.card-owner-badge small {
+  font-family: var(--font-display); font-size: 11px; line-height: .95;
+  white-space: nowrap; text-transform: lowercase;
+}
+.sports-card-front.has-card-frame .card-owner-badge {
+  top: 120px; left: 34px;
+}
 .card-player-art {
   position: absolute; left: 50%; bottom: 78px; z-index: 2; transform: translateX(-50%);
   width: 76%; height: 61%; object-fit: contain; object-position: center bottom;
@@ -1008,34 +1031,34 @@ button.drawing-collection-item:focus-visible {
 }
 .sports-card-front.has-card-frame .card-shine { display: none; }
 .sports-card-back {
-  transform: rotateY(180deg); background: #fffdf7; padding: 16px; display: flex; flex-direction: column; gap: 13px;
+  transform: rotateY(180deg); background: #fffdf7; padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 9px;
 }
-.card-back-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 9px; }
+.card-back-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 7px; }
 .card-back-user { color: var(--muted); font-size: 15px; line-height: 1; }
-.card-back-head h3 { font-family: var(--font-display); font-size: 29px; font-weight: 400; line-height: .95; margin-top: 3px; }
+.card-back-head h3 { font-family: var(--font-display); font-size: 27px; font-weight: 400; line-height: .95; margin-top: 3px; }
 .card-back-grade {
   display: grid; grid-template-rows: auto auto; justify-items: center; align-content: center; row-gap: 1px;
   min-width: 56px; border: 2px solid var(--ink); border-radius: 8px; background: var(--blue); color: #fff; padding: 4px 6px;
 }
 .card-back-grade b { font-family: var(--font-display); font-size: 31px; line-height: .9; font-weight: 400; }
 .card-back-grade span { font-size: 16px; line-height: 1; color: #fff; }
-.card-verdict { font-size: 18px; line-height: 1.16; text-align: center; }
-.card-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.card-cat { border: 2px solid var(--ink); border-radius: 8px; padding: 5px 4px; background: var(--card-2); text-align: center; }
+.card-verdict { font-size: 17px; line-height: 1.12; text-align: center; }
+.card-cats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.card-cat { border: 2px solid var(--ink); border-radius: 8px; padding: 4px; background: var(--card-2); text-align: center; }
 .card-cat span { display: block; font-size: 13px; line-height: 1; color: var(--muted); }
-.card-cat b { display: block; font-family: var(--font-display); font-size: 29px; line-height: .95; color: var(--red); }
+.card-cat b { display: block; font-family: var(--font-display); font-size: 26px; line-height: .95; color: var(--red); }
 .injury-card-cat b { color: var(--ink); }
-.card-analysis-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.card-analysis-mini { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; min-height: 0; }
 .card-analysis-mini h4 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; line-height: 1.05; color: var(--blue); }
 .card-analysis-mini div:last-child h4 { color: var(--red); }
-.card-analysis-mini ul { list-style: none; display: grid; gap: 4px; margin-top: 4px; }
-.card-analysis-mini li { font-size: 16px; line-height: 1.08; }
+.card-analysis-mini ul { list-style: none; display: grid; gap: 3px; margin-top: 3px; }
+.card-analysis-mini li { font-size: 15px; line-height: 1.03; }
 .card-analysis-mini li::before { margin-right: 5px; }
 .card-analysis-mini div:first-child li::before { content: '+'; color: var(--good); }
 .card-analysis-mini div:last-child li::before { content: '\2212'; color: var(--red); }
 .card-full-stats {
-  margin-top: auto; align-self: center; border: 2px solid var(--ink); border-radius: 9px;
-  background: var(--blue); color: #fff; padding: 6px 14px; font-size: 19px; box-shadow: var(--shadow-sm);
+  flex: 0 0 auto; margin: auto auto 3px; align-self: center; border: 2px solid var(--ink); border-radius: 9px;
+  background: var(--blue); color: #fff; padding: 5px 12px; font-size: 18px; box-shadow: var(--shadow-sm);
   text-decoration: none;
 }
 .card-full-stats:hover { filter: brightness(1.05); }
@@ -1281,6 +1304,17 @@ button.drawing-collection-item:focus-visible {
   border-radius: 9px; padding: 9px 11px; color: var(--ink); font: inherit; font-size: 17px;
 }
 .admin-wide-field textarea { resize: vertical; }
+.admin-build-type-grid {
+  display: flex; flex-wrap: wrap; gap: 8px;
+}
+.admin-build-type-chip {
+  appearance: none; border: 2.5px solid var(--ink); border-radius: 999px; background: var(--card);
+  color: var(--ink); cursor: pointer; font: inherit; font-size: 18px; line-height: 1;
+  padding: 8px 13px; box-shadow: var(--shadow-sm);
+}
+.admin-build-type-chip.selected {
+  background: var(--blue); color: #fff;
+}
 .admin-market-layout {
   display: grid; grid-template-columns: minmax(260px, .72fr) minmax(420px, 1.4fr); gap: 18px;
 }
@@ -1293,12 +1327,18 @@ button.drawing-collection-item:focus-visible {
   background: var(--card); border: 2.5px solid var(--ink); border-radius: 9px; box-shadow: var(--shadow-sm);
 }
 .admin-request-row.selected { background: #fff; border-color: var(--blue); }
+.admin-request-row.is-rejected { background: #fff2ef; border-color: var(--red); }
+.admin-request-row.is-fulfilled { background: #effcf5; border-color: var(--good); }
+.admin-request-row.selected.is-rejected { border-color: var(--red); }
+.admin-request-row.selected.is-fulfilled { border-color: var(--good); }
 .admin-request-row b { display: block; font-size: 20px; line-height: 1.05; }
 .admin-request-row small { display: block; color: var(--muted); font-size: 13px; line-height: 1.15; margin-top: 4px; }
 .admin-request-row em {
   align-self: start; white-space: nowrap; color: var(--green); font-style: normal; font-size: 13px; font-weight: 800;
   text-transform: uppercase;
 }
+.admin-request-row.is-rejected em { color: var(--red); }
+.admin-request-row.is-fulfilled em { color: var(--good); }
 .admin-request-detail {
   display: grid; gap: 14px; padding: 18px; background: var(--card); border: 3px solid var(--ink);
   border-radius: 12px; box-shadow: var(--shadow);

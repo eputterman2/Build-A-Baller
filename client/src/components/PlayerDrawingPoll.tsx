@@ -68,7 +68,6 @@ export function PlayerDrawingPoll() {
       <div className="poll-head">
         <span className="pod-kicker">Weekly Vote</span>
         <h2>Who Should We Draw Next?</h2>
-        <p>{poll?.question ?? 'Who should get the next player drawing?'}</p>
       </div>
 
       {loading ? (

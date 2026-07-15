@@ -152,6 +152,7 @@ const tutorialCopy: Record<TutorialStep, { title: string; body: string }> = {
 
 export function Game() {
   const { user } = useAuth();
+  const location = useLocation();
 
   const [phase, setPhase] = useState<Phase>('intro');
   const [group, setGroup] = useState(0);
@@ -224,15 +225,6 @@ export function Game() {
     return () => { alive = false; };
   }, [user]);
 
-  // Clicking the nav logo / Play returns to the home screen, even mid-game.
-  const location = useLocation();
-  useEffect(() => {
-    if ((location.state as { home?: number } | null)?.home) {
-      clearTimers();
-      setPhase('intro');
-    }
-  }, [location, clearTimers]);
-
   const loadRound = useCallback((gi: number, excludedPlayerId?: string) => {
     clearTimers();
     const excludedIds = new Set(excludedPlayerId ? [excludedPlayerId] : []);
@@ -243,7 +235,7 @@ export function Game() {
     setLastApplied(null);
   }, [clearTimers]);
 
-  const start = () => {
+  const start = useCallback(() => {
     setPicks({} as PickMap);
     setFinal(null);
     setSaveError(null);
@@ -256,7 +248,20 @@ export function Game() {
     setGroup(0);
     setPhase('pick');
     loadRound(0);
-  };
+  }, [loadRound]);
+
+  // Logo returns home; Play-style CTAs start a fresh game.
+  useEffect(() => {
+    const state = location.state as { home?: number; play?: number } | null;
+    if (state?.play) {
+      start();
+      return;
+    }
+    if (state?.home) {
+      clearTimers();
+      setPhase('intro');
+    }
+  }, [location, clearTimers, start]);
 
   const closeTutorial = () => setTutorialClosed(true);
   const neverShowTutorial = () => {

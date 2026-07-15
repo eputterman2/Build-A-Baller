@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   ATTRIBUTES, CATEGORIES, PLAYERS_BY_ID, analyzeBuild, formatValue, gradeFor,
-  selectArchetypeCharacter,
+  buildArchetype, isCustomCharacterId, selectArchetypeCharacter,
   type CategoryName, type DrawingOption, type PickMap, type ScoreResult,
 } from '@shared/index';
 import { lastName, overallTier } from '../util';
@@ -43,6 +43,9 @@ export function Results({ overall, result, picks, selectedCharacterId, onCharact
   const grade = gradeFor(overall);
   const analysis = analyzeBuild(result);
   const defaultCharacter = useMemo(() => selectArchetypeCharacter(result, picks), [result, picks]);
+  const archetype = useMemo(() => buildArchetype(result), [result]);
+  const autoPickKey = `${overall}|${archetype}|${defaultCharacter.id}`;
+  const [autoPickedKey, setAutoPickedKey] = useState<string | null>(null);
   const [drawingOptions, setDrawingOptions] = useState<DrawingOption[]>([
     {
       id: defaultCharacter.id,
@@ -83,12 +86,12 @@ export function Results({ overall, result, picks, selectedCharacterId, onCharact
     }
 
     let alive = true;
-    api.drawingOptions(overall, activeCharacterId)
+    api.drawingOptions(overall, activeCharacterId, archetype)
       .then(options => {
         if (!alive) return;
         const hasDefault = options.some(option => option.id === defaultCharacter.id);
         const hasActive = options.some(option => option.id === activeCharacterId);
-        setDrawingOptions(hasDefault ? options : [
+        const nextOptions = hasDefault ? options : [
           {
             id: defaultCharacter.id,
             name: defaultCharacter.name,
@@ -101,7 +104,22 @@ export function Results({ overall, result, picks, selectedCharacterId, onCharact
           },
           ...options,
         ].filter((option, index, all) =>
-          hasActive || option.id !== activeCharacterId || all.findIndex(item => item.id === option.id) === index));
+          hasActive || option.id !== activeCharacterId || all.findIndex(item => item.id === option.id) === index);
+        setDrawingOptions(nextOptions);
+        if (
+          autoPickedKey !== autoPickKey
+          && activeCharacterId === defaultCharacter.id
+          && selectedCharacterId === defaultCharacter.id
+        ) {
+          const eligibleCustomDrawings = nextOptions.filter(option => isCustomCharacterId(option.id) && option.eligible);
+          const rollPool = [
+            { id: defaultCharacter.id },
+            ...eligibleCustomDrawings.map(option => ({ id: option.id })),
+          ];
+          const chosen = rollPool[Math.floor(Math.random() * rollPool.length)]?.id;
+          setAutoPickedKey(autoPickKey);
+          if (chosen && chosen !== defaultCharacter.id) onCharacterChange?.(chosen);
+        }
       })
       .catch(() => {
         if (alive) {
@@ -118,7 +136,7 @@ export function Results({ overall, result, picks, selectedCharacterId, onCharact
         }
       });
     return () => { alive = false; };
-  }, [activeCharacterId, canSwapDrawing, defaultCharacter, overall, user]);
+  }, [activeCharacterId, archetype, autoPickedKey, autoPickKey, canSwapDrawing, defaultCharacter, overall, selectedCharacterId, user, onCharacterChange]);
 
   return (
     <>

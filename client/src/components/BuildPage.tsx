@@ -39,7 +39,7 @@ export function BuildPage() {
       </div>
       <Results overall={build.overall} result={build.result} picks={build.picks} />
       <div className="save-bar">
-        <Link className="btn btn-primary" to="/">Build Your Own</Link>
+        <Link className="btn btn-primary" to="/" state={{ play: Date.now() }}>Build Your Own</Link>
         <Link className="btn btn-ghost" to={returnTo}>{returnLabel}</Link>
       </div>
     </div>

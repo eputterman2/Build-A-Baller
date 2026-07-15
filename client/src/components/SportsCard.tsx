@@ -60,7 +60,10 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   };
 
   return (
-    <article className={`sports-card-wrap card-tier-${cardTier}${flipped ? ' flipped' : ''}${cardFrame ? ' has-card-frame' : ''}${cardBanner ? ' has-card-banner' : ''}`}>
+    <article
+      className={`sports-card-wrap card-tier-${cardTier}${flipped ? ' flipped' : ''}${cardFrame ? ' has-card-frame' : ''}${cardBanner ? ' has-card-banner' : ''}`}
+      data-card-id={build.id}
+    >
       <div className="sports-card-meta">
         {rank != null && (
           <span className="sports-card-rank">
@@ -93,6 +96,12 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
               <span>{build.overall}</span>
               <small>OVR</small>
             </div>
+            {build.originalOwnerDrawing && (
+              <div className="card-owner-badge" aria-label="Original owner">
+                <span aria-hidden="true">★</span>
+                <small>original owner</small>
+              </div>
+            )}
             <img
               className="card-player-art"
               src={character.src}

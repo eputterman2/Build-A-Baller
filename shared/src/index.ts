@@ -9,3 +9,4 @@ export * from './archetypeCharacters';
 export * from './identity';
 export * from './ranking';
 export * from './accessories';
+export * from './customDrawingBuildTypes';

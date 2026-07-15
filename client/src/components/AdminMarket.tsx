@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
+import {
+  CUSTOM_DRAWING_BUILD_TYPES,
+  customDrawingBuildHint,
+  parseCustomDrawingBuildHint,
+} from '@shared/index';
 import { api, type MarketDrawingRequest } from '../api';
 
 const ADMIN_SECRET_KEY = 'baller_admin_secret';
 
 const statusOptions = [
-  { value: 'paid', label: 'In review' },
   { value: 'in_review', label: 'In review' },
   { value: 'in_progress', label: 'Drawing in progress' },
   { value: 'rejected', label: 'Rejected' },
@@ -33,6 +37,12 @@ function fileToDataUrl(file: File): Promise<string> {
   });
 }
 
+function statusClass(status: string): string {
+  if (status === 'rejected') return ' is-rejected';
+  if (status === 'fulfilled') return ' is-fulfilled';
+  return '';
+}
+
 export function AdminMarket() {
   const [secret, setSecret] = useState(() => localStorage.getItem(ADMIN_SECRET_KEY) || '');
   const [draftSecret, setDraftSecret] = useState(secret);
@@ -46,7 +56,7 @@ export function AdminMarket() {
   const [visibility, setVisibility] = useState<'public' | 'private'>('private');
   const [minOverall, setMinOverall] = useState(0);
   const [maxOverall, setMaxOverall] = useState(99);
-  const [buildHint, setBuildHint] = useState('');
+  const [buildTypeIds, setBuildTypeIds] = useState<string[]>(['any']);
   const [adminNote, setAdminNote] = useState('');
   const [drawingDataUrl, setDrawingDataUrl] = useState('');
 
@@ -83,9 +93,7 @@ export function AdminMarket() {
     setVisibility(selected.type === 'pro-player' ? 'public' : selected.visibility);
     setMinOverall(selected.minOverall ?? 0);
     setMaxOverall(selected.maxOverall ?? 99);
-    setBuildHint(selected.buildHint || (selected.type === 'pro-player'
-      ? 'Public custom player drawing'
-      : 'Private photo custom drawing'));
+    setBuildTypeIds(parseCustomDrawingBuildHint(selected.buildHint));
     setAdminNote(selected.adminNote || '');
     setDrawingDataUrl('');
   }, [selected]);
@@ -135,11 +143,40 @@ export function AdminMarket() {
         visibility,
         minOverall,
         maxOverall,
-        buildHint,
+        buildHint: customDrawingBuildHint(buildTypeIds),
         adminNote,
       });
       updateRequest(updated);
       setMessage('Drawing is now live.');
+    } catch (err) {
+      setError((err as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const toggleBuildType = (id: string) => {
+    setBuildTypeIds(current => {
+      if (id === 'any') return ['any'];
+      const withoutAny = current.filter(typeId => typeId !== 'any');
+      const next = withoutAny.includes(id)
+        ? withoutAny.filter(typeId => typeId !== id)
+        : [...withoutAny, id];
+      return next.length ? next : ['any'];
+    });
+  };
+
+  const deleteRejectedRequest = async () => {
+    if (!selected || selected.status !== 'rejected') return;
+    setBusy(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.adminDeleteDrawingRequest(secret, selected.id);
+      const nextRequests = requests.filter(request => request.id !== selected.id);
+      setRequests(nextRequests);
+      setSelectedId(nextRequests[0]?.id ?? null);
+      setMessage('Rejected request removed from the admin hub.');
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -178,7 +215,7 @@ export function AdminMarket() {
               <div className="notice">No drawing requests yet.</div>
             ) : requests.map(request => (
               <button
-                className={`admin-request-row${selected?.id === request.id ? ' selected' : ''}`}
+                className={`admin-request-row${selected?.id === request.id ? ' selected' : ''}${statusClass(request.status)}`}
                 key={request.id}
                 onClick={() => setSelectedId(request.id)}
                 type="button"
@@ -245,10 +282,21 @@ export function AdminMarket() {
                 </label>
               </div>
 
-              <label className="admin-wide-field">
-                Build hint
-                <input value={buildHint} onChange={event => setBuildHint(event.target.value)} />
-              </label>
+              <div className="admin-wide-field">
+                <span>Build types</span>
+                <div className="admin-build-type-grid">
+                  {CUSTOM_DRAWING_BUILD_TYPES.map(type => (
+                    <button
+                      className={`admin-build-type-chip${buildTypeIds.includes(type.id) ? ' selected' : ''}`}
+                      key={type.id}
+                      onClick={() => toggleBuildType(type.id)}
+                      type="button"
+                    >
+                      {type.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <label className="admin-wide-field">
                 Admin note
                 <textarea value={adminNote} onChange={event => setAdminNote(event.target.value)} rows={3} />
@@ -271,7 +319,7 @@ export function AdminMarket() {
               <div className="admin-actions">
                 {statusOptions.map(option => (
                   <button
-                    className="btn btn-ghost"
+                    className={`btn ${option.value === 'rejected' ? 'btn-danger' : 'btn-ghost'}`}
                     disabled={busy}
                     key={option.value}
                     onClick={() => void updateStatus(option.value)}
@@ -280,7 +328,12 @@ export function AdminMarket() {
                     Mark {option.label}
                   </button>
                 ))}
-                <button className="btn btn-primary" disabled={busy} onClick={() => void fulfill()} type="button">
+                {selected.status === 'rejected' && (
+                  <button className="btn btn-danger" disabled={busy} onClick={() => void deleteRejectedRequest()} type="button">
+                    Remove From Admin Hub
+                  </button>
+                )}
+                <button className="btn btn-success" disabled={busy} onClick={() => void fulfill()} type="button">
                   Publish Drawing
                 </button>
               </div>

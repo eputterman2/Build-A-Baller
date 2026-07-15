@@ -118,9 +118,11 @@ export const api = {
   collection: () => req<{ builds: CollectionBuild[] }>('/builds/collection').then(d => d.builds),
   drawingStats: () =>
     req<{ stats: DrawingCollectionStats }>('/builds/drawing-stats').then(d => d.stats),
-  drawingOptions: (overall: number, currentCharacterId?: string) =>
+  drawingOptions: (overall: number, currentCharacterId?: string, archetype?: string) =>
     req<{ options: DrawingOption[] }>(
-      `/builds/drawing-options?overall=${encodeURIComponent(String(overall))}&current=${encodeURIComponent(currentCharacterId ?? '')}`,
+      `/builds/drawing-options?overall=${encodeURIComponent(String(overall))}`
+      + `&current=${encodeURIComponent(currentCharacterId ?? '')}`
+      + `&archetype=${encodeURIComponent(archetype ?? '')}`,
     ).then(d => d.options),
   playerOfDayWins: () =>
     req<{ wins: PlayerOfDayWin[]; totalWins: number }>('/builds/player-of-day-wins'),
@@ -135,10 +137,10 @@ export const api = {
       body: JSON.stringify({ accessories }),
     }).then(d => d.accessories),
   updateBuildCharacter: (id: string, characterId: string) =>
-    req<{ characterId: string }>('/builds/' + id + '/character', {
+    req<{ characterId: string; originalOwnerDrawing: boolean }>('/builds/' + id + '/character', {
       method: 'PATCH',
       body: JSON.stringify({ characterId }),
-    }).then(d => d.characterId),
+    }),
   marketBundles: () => req<MarketBundlesResponse>('/market/bundles', { cache: 'no-store' }),
   purchaseBundle: (id: string) =>
     req<{ bundle: MarketBundle; ownedBundleIds: string[] } & CheckoutResponse>('/market/bundles/' + id + '/purchase', { method: 'POST' }),
@@ -167,6 +169,11 @@ export const api = {
       headers: adminHeaders(secret),
       body: JSON.stringify(fulfillment),
     }).then(d => d.request),
+  adminDeleteDrawingRequest: (secret: string, id: string) =>
+    req<{ ok: true }>('/market/admin/drawing-requests/' + id, {
+      method: 'DELETE',
+      headers: adminHeaders(secret),
+    }).then(d => d.ok),
   accessories: () => req<AccessoriesResponse>('/market/accessories'),
   deleteBuild: (id: string) =>
     req<{ ok: true }>('/builds/' + id, { method: 'DELETE' }).then(d => d.ok),

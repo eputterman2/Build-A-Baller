@@ -14,12 +14,16 @@ export function Nav() {
     e.preventDefault();
     navigate('/', { state: { home: Date.now() } });
   };
+  const goPlay = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate('/', { state: { play: Date.now() } });
+  };
 
   return (
     <header className="nav">
       <Link to="/" className="brand" onClick={goHome}><img className="nav-logo" src="/logo.png" alt="Build-A-Baller" /></Link>
       <nav className="nav-links">
-        <Link to="/" className={pathname === '/' ? 'active' : ''} onClick={goHome}>Play</Link>
+        <Link to="/" className={pathname === '/' ? 'active' : ''} onClick={goPlay}>Play</Link>
         <Link to="/leaderboard" className={pathname === '/leaderboard' ? 'active' : ''}>Leaderboard</Link>
         <Link to="/collection" className={pathname === '/collection' ? 'active' : ''}>Collection</Link>
         <Link to="/market" className={pathname === '/market' ? 'active' : ''}>Market</Link>

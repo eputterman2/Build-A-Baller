@@ -119,6 +119,7 @@ export interface BuildSummary {
   identity: PlayerIdentity;
   accessories: BuildAccessories;
   characterId: string;
+  originalOwnerDrawing: boolean;
 }
 
 export interface BuildDetail extends BuildSummary {
