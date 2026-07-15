@@ -7,7 +7,7 @@ import {
   buildArchetype, buildRankMetrics, customCharacterId, customCharacterImageSrc, customCharacterRequestId,
   customDrawingMatchesArchetype,
   getArchetypeCharacterById, gradeFor, inCharacterOverallRange, isCustomCharacterId,
-  normalizePlayerIdentity, scoreBuild, selectArchetypeCharacter,
+  normalizePlayerIdentity, scoreBuild, selectArchetypeCharacter, selectLegacyEmptyBuildCharacter,
   type AccessoryType, type AttributeKey, type BuildAccessories, type BuildDetail, type BuildSummary, type CollectionBuild, type PlayerOfDay,
   type DrawingCollectionLeader, type DrawingCollectionStats, type DrawingOption, type PlayerOfDayLeader, type PlayerOfDayWin, type PickMap, type RawValues, type ScoreResult,
 } from '@shared/index';
@@ -175,7 +175,7 @@ function characterIdForBuild(
     const rule = getArchetypeCharacterById(requested);
     if (rule && inCharacterOverallRange(rule, scoreResult.overall)) return requested;
   }
-  return scoreResult && pickMap ? selectArchetypeCharacter(scoreResult, pickMap).id : requested;
+  return scoreResult && pickMap ? selectLegacyEmptyBuildCharacter(scoreResult, pickMap).id : requested;
 }
 
 async function getUnlockedCharacterIds(userId: string): Promise<Set<string>> {

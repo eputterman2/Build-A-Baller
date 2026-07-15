@@ -31,6 +31,11 @@ const character = (
 
 const LOWEST = 0;
 const MARKET_DRAWING_IDS = new Set(MARKET_BUNDLES.map(bundle => bundle.drawingId));
+const LEGACY_EMPTY_BUILD_EXCLUDED_IDS = new Set([
+  'c1-left',
+  'c1-middle',
+  'c1-right',
+]);
 export const CUSTOM_CHARACTER_PREFIX = 'custom:';
 
 export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
@@ -517,14 +522,13 @@ function defaultSelectableRules(ownedMarketDrawingIds?: Iterable<string>): Arche
     !MARKET_DRAWING_IDS.has(rule.id) || owned.has(rule.id));
 }
 
-export function selectArchetypeCharacter(
+function selectArchetypeCharacterFromRules(
   result: ScoreResult,
   picks?: PickMap,
-  ownedMarketDrawingIds?: Iterable<string>,
+  selectableRules: ArchetypeCharacterRule[] = ARCHETYPE_CHARACTER_RULES,
 ): ArchetypeCharacter {
   const archetype = buildArchetype(result);
   const family = archetypeFamily(archetype);
-  const selectableRules = defaultSelectableRules(ownedMarketDrawingIds);
 
   const exactOptions = selectableRules.filter(rule =>
     rule.archetypes.includes(family) && inCharacterOverallRange(rule, result.overall));
@@ -537,4 +541,20 @@ export function selectArchetypeCharacter(
   if (archetypeFallback.length) return pickOption(archetypeFallback, family, result, picks);
 
   return pickOption(selectableRules.length ? selectableRules : ARCHETYPE_CHARACTER_RULES, family, result, picks);
+}
+
+export function selectArchetypeCharacter(
+  result: ScoreResult,
+  picks?: PickMap,
+  ownedMarketDrawingIds?: Iterable<string>,
+): ArchetypeCharacter {
+  return selectArchetypeCharacterFromRules(result, picks, defaultSelectableRules(ownedMarketDrawingIds));
+}
+
+export function selectLegacyEmptyBuildCharacter(
+  result: ScoreResult,
+  picks?: PickMap,
+): ArchetypeCharacter {
+  const legacyRules = defaultSelectableRules().filter(rule => !LEGACY_EMPTY_BUILD_EXCLUDED_IDS.has(rule.id));
+  return selectArchetypeCharacterFromRules(result, picks, legacyRules);
 }
