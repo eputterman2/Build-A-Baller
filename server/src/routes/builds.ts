@@ -688,18 +688,42 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
 // Users ranked by how many unique player drawings they have collected.
 buildsRouter.get('/drawing-collection-leaderboard', async (_req, res, next) => {
   try {
-    const result = await query<DrawingBuildRow>(
-      `SELECT u.username, b.character_id, b.picks, b.result
-       FROM builds b
-       JOIN users u ON u.id = b.user_id`,
-    );
+    const [buildResult, bundleResult, customResult] = await Promise.all([
+      query<DrawingBuildRow>(
+        `SELECT u.username, b.character_id, b.picks, b.result
+         FROM builds b
+         JOIN users u ON u.id = b.user_id`,
+      ),
+      query<{ username: string; bundle_id: string }>(
+        `SELECT u.username, ub.bundle_id
+         FROM user_bundles ub
+         JOIN users u ON u.id = ub.user_id`,
+      ),
+      query<{ username: string; id: string }>(
+        `SELECT u.username, r.id
+         FROM market_drawing_requests r
+         JOIN users u ON u.id = r.user_id
+         WHERE r.status = 'fulfilled'
+           AND r.final_drawing_data_url <> ''`,
+      ),
+    ]);
     const byUser = new Map<string, Set<string>>();
-    for (const row of result.rows) {
-      const username = safePublicUsername(row.username ?? '');
-      const drawingId = characterIdForBuild(row.result, row.picks, row.character_id);
-      if (!username || !drawingId) continue;
+    const addDrawing = (rawUsername: string | undefined, drawingId: string | undefined) => {
+      const username = safePublicUsername(rawUsername ?? '');
+      if (!username || !drawingId) return;
       if (!byUser.has(username)) byUser.set(username, new Set());
       byUser.get(username)!.add(drawingId);
+    };
+    for (const row of buildResult.rows) {
+      const username = safePublicUsername(row.username ?? '');
+      const drawingId = characterIdForBuild(row.result, row.picks, row.character_id);
+      addDrawing(username, drawingId);
+    }
+    for (const row of bundleResult.rows) {
+      addDrawing(row.username, MARKET_BUNDLES_BY_ID[row.bundle_id]?.drawingId);
+    }
+    for (const row of customResult.rows) {
+      addDrawing(row.username, customCharacterId(row.id));
     }
     const leaders: DrawingCollectionLeader[] = [...byUser.entries()]
       .map(([username, drawings]) => ({ username, drawings: drawings.size }))

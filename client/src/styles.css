@@ -134,15 +134,15 @@ body {
 .pod-card { width: 190px; }
 .pod-card .sports-card-wrap { width: 100%; }
 .player-of-day .pod-card .card-owner-badge {
-  top: 86px; left: 48px; width: 22px; height: 22px; padding: 0;
+  top: 94px; left: 34px; width: 18px; height: 18px; padding: 0;
   justify-content: center; border: 0; background: transparent; box-shadow: none;
 }
 .player-of-day .pod-card .card-owner-badge span {
-  font-size: 22px; line-height: 1; text-shadow: 1px 1px 0 var(--ink);
+  font-size: 18px; line-height: 1; text-shadow: 1px 1px 0 var(--ink);
 }
 .player-of-day .pod-card .card-owner-badge small { display: none; }
 .player-of-day .pod-card .sports-card-front.has-card-frame .card-owner-badge {
-  top: 108px; left: 64px;
+  top: 116px; left: 50px;
 }
 .pod-cta { justify-self: end; white-space: nowrap; }
 .player-of-day-compact {
@@ -971,24 +971,24 @@ button.drawing-collection-item:focus-visible {
 .card-overall small { font-size: 18px; color: var(--ink); letter-spacing: .08em; }
 .sports-card-front.has-card-frame .card-overall { top: 34px; left: 32px; }
 .card-owner-badge {
-  position: absolute; top: 31px; left: 98px; z-index: 7;
-  display: inline-flex; align-items: center; gap: 5px;
-  max-width: 118px; padding: 4px 8px 5px 6px;
+  position: absolute; top: 22px; left: 76px; z-index: 7;
+  display: inline-flex; align-items: center; gap: 6px;
+  max-width: 128px; padding: 5px 10px 6px 7px;
   border: 2px solid var(--ink); border-radius: 999px;
   background: rgba(255, 250, 220, .94); color: var(--ink);
   box-shadow: 2px 2px 0 rgba(22,24,29,.5);
   pointer-events: none;
 }
 .card-owner-badge span {
-  color: #d6a21e; font-family: var(--font-display); font-size: 16px; line-height: .9;
+  color: #d6a21e; font-family: var(--font-display); font-size: 18px; line-height: .9;
   text-shadow: 1px 1px 0 var(--ink);
 }
 .card-owner-badge small {
-  font-family: var(--font-display); font-size: 11px; line-height: .95;
+  font-family: var(--font-display); font-size: 13px; line-height: .95;
   white-space: nowrap; text-transform: lowercase;
 }
 .sports-card-front.has-card-frame .card-owner-badge {
-  top: 49px; left: 114px;
+  top: 40px; left: 92px;
 }
 .card-player-art {
   position: absolute; left: 50%; bottom: 78px; z-index: 2; transform: translateX(-50%);

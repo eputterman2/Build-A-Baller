@@ -17,6 +17,7 @@ export function Collection() {
   const [showAuth, setShowAuth] = useState(false);
   const [builds, setBuilds] = useState<CollectionBuild[] | null>(null);
   const [playerOfDayWinCount, setPlayerOfDayWinCount] = useState<number | null>(null);
+  const [marketDrawingIds, setMarketDrawingIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -31,13 +32,22 @@ export function Collection() {
     if (!user) {
       setBuilds(null);
       setPlayerOfDayWinCount(null);
+      setMarketDrawingIds([]);
       return;
     }
     setError(null);
-    Promise.all([api.collection(), api.playerOfDayWins()])
-      .then(([collection, winHistory]) => {
+    Promise.all([api.collection(), api.playerOfDayWins(), api.marketBundles(), api.drawingRequests()])
+      .then(([collection, winHistory, market, requests]) => {
         setBuilds(collection);
         setPlayerOfDayWinCount(winHistory.totalWins);
+        const ownedBundles = new Set(market.ownedBundleIds);
+        const ownedBundleDrawings = market.bundles
+          .filter(bundle => ownedBundles.has(bundle.id))
+          .map(bundle => bundle.drawingId);
+        const fulfilledCustomDrawings = requests
+          .filter(request => request.status === 'fulfilled' && request.finalDrawingSrc)
+          .map(request => request.characterId);
+        setMarketDrawingIds([...ownedBundleDrawings, ...fulfilledCustomDrawings]);
       })
       .catch(e => setError((e as Error).message));
   }, [user]);
@@ -162,14 +172,18 @@ export function Collection() {
     const collectedDrawingIds = new Set(
       savedBuilds.map(build => resolveArchetypeCharacter(build.result, build.picks, build.characterId).id),
     );
-    const totalDrawingCount = new Set(ARCHETYPE_CHARACTER_RULES.map(rule => rule.id)).size;
+    for (const drawingId of marketDrawingIds) collectedDrawingIds.add(drawingId);
+    const totalDrawingCount = new Set([
+      ...ARCHETYPE_CHARACTER_RULES.map(rule => rule.id),
+      ...marketDrawingIds,
+    ]).size;
     return {
       highestOverall,
       highestBuild,
       collectedDrawingCount: collectedDrawingIds.size,
       totalDrawingCount,
     };
-  }, [builds]);
+  }, [builds, marketDrawingIds]);
 
   if (loading) return <div className="notice">Loading collection…</div>;
 
