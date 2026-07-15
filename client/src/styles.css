@@ -133,6 +133,17 @@ body {
 .pod-winner-copy span { color: var(--muted); display: block; max-width: 390px; }
 .pod-card { width: 190px; }
 .pod-card .sports-card-wrap { width: 100%; }
+.player-of-day .pod-card .card-owner-badge {
+  top: 86px; left: 48px; width: 22px; height: 22px; padding: 0;
+  justify-content: center; border: 0; background: transparent; box-shadow: none;
+}
+.player-of-day .pod-card .card-owner-badge span {
+  font-size: 22px; line-height: 1; text-shadow: 1px 1px 0 var(--ink);
+}
+.player-of-day .pod-card .card-owner-badge small { display: none; }
+.player-of-day .pod-card .sports-card-front.has-card-frame .card-owner-badge {
+  top: 108px; left: 64px;
+}
 .pod-cta { justify-self: end; white-space: nowrap; }
 .player-of-day-compact {
   grid-template-columns: minmax(0, 1fr) auto; max-width: 760px; margin: -4px auto 24px; padding: 14px 16px;
@@ -960,7 +971,7 @@ button.drawing-collection-item:focus-visible {
 .card-overall small { font-size: 18px; color: var(--ink); letter-spacing: .08em; }
 .sports-card-front.has-card-frame .card-overall { top: 34px; left: 32px; }
 .card-owner-badge {
-  position: absolute; top: 98px; left: 16px; z-index: 7;
+  position: absolute; top: 31px; left: 98px; z-index: 7;
   display: inline-flex; align-items: center; gap: 5px;
   max-width: 118px; padding: 4px 8px 5px 6px;
   border: 2px solid var(--ink); border-radius: 999px;
@@ -977,7 +988,7 @@ button.drawing-collection-item:focus-visible {
   white-space: nowrap; text-transform: lowercase;
 }
 .sports-card-front.has-card-frame .card-owner-badge {
-  top: 120px; left: 34px;
+  top: 49px; left: 114px;
 }
 .card-player-art {
   position: absolute; left: 50%; bottom: 78px; z-index: 2; transform: translateX(-50%);

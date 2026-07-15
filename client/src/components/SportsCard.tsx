@@ -99,7 +99,7 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
             {build.originalOwnerDrawing && (
               <div className="card-owner-badge" aria-label="Original owner">
                 <span aria-hidden="true">★</span>
-                <small>original owner</small>
+                <small>owner</small>
               </div>
             )}
             <img
