@@ -72,7 +72,9 @@ export function AuthModal({ onClose, intro }: AuthModalProps) {
               Password
               <input type="password" value={password} onChange={e => setPassword(e.target.value)}
                 autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
-                placeholder="at least 6 characters" required />
+                minLength={6}
+                maxLength={100}
+                placeholder="6-100 characters" required />
             </label>
           )}
           {error && <div className="form-error">{error}</div>}

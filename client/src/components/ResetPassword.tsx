@@ -56,12 +56,12 @@ export function ResetPassword() {
         <label>
           New Password
           <input type="password" value={password} onChange={event => setPassword(event.target.value)}
-            autoComplete="new-password" placeholder="at least 6 characters" required />
+            autoComplete="new-password" minLength={6} maxLength={100} placeholder="6-100 characters" required />
         </label>
         <label>
           Confirm Password
           <input type="password" value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)}
-            autoComplete="new-password" placeholder="type it again" required />
+            autoComplete="new-password" minLength={6} maxLength={100} placeholder="type it again" required />
         </label>
         {error && <div className="form-error">{error}</div>}
         <button className="btn btn-primary" type="submit" disabled={busy}>

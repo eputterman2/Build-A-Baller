@@ -10,7 +10,9 @@ export const authRouter = Router();
 
 const usernameSchema = z.string().trim().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/,
   'Username may only contain letters, numbers, and underscores');
-const passwordSchema = z.string().min(6).max(100);
+const passwordSchema = z.string()
+  .min(6, 'Password must be at least 6 characters.')
+  .max(100, 'Password must be 100 characters or fewer.');
 const emailSchema = z.string().trim().email('Enter a valid email address').max(254)
   .transform(value => value.toLowerCase());
 

@@ -68,6 +68,20 @@ function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise
   });
 }
 
+function canvasToPngBlob(canvas: HTMLCanvasElement): Promise<Blob> {
+  return new Promise((resolve, reject) => {
+    canvas.toBlob(blob => {
+      if (blob) resolve(blob);
+      else reject(new Error('Could not create card image'));
+    }, 'image/png');
+  });
+}
+
+function isLikelyMobileDevice(): boolean {
+  return /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+    || (navigator.maxTouchPoints > 1 && /Macintosh/i.test(navigator.userAgent));
+}
+
 async function fetchImage(src: string): Promise<Response> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 4500);
@@ -189,12 +203,27 @@ export async function downloadCardImage(cardId: string, fileName: string): Promi
       15000,
       'Card export timed out',
     );
-    const dataUrl = canvas.toDataURL('image/png');
+    const pngBlob = await canvasToPngBlob(canvas);
+    const downloadName = `${safeFileName(fileName)}.png`;
 
+    if (isLikelyMobileDevice() && navigator.share) {
+      const file = new File([pngBlob], downloadName, { type: 'image/png' });
+      if (!navigator.canShare || navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          files: [file],
+          title: 'Build-A-Baller card',
+          text: 'Save or share this Build-A-Baller card.',
+        });
+        return;
+      }
+    }
+
+    const url = URL.createObjectURL(pngBlob);
     const link = document.createElement('a');
-    link.download = `${safeFileName(fileName)}.png`;
-    link.href = dataUrl;
+    link.download = downloadName;
+    link.href = url;
     link.click();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   } finally {
     if (wasFlipped) wrap.classList.add('flipped');
     inner.style.transition = previousTransition;
