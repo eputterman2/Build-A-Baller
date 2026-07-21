@@ -23,6 +23,7 @@ import {
 export const buildsRouter = Router();
 
 const GLOBAL_LEADERBOARD_LIMIT = 100;
+const GLOBAL_TIER_LEADERBOARD_LIMIT = 9;
 const GLOBAL_CARDS_PER_USER = 3;
 const COLLECTION_LIMIT = 50;
 const PLAYER_OF_DAY_WIN_CARD_LIMIT = 30;
@@ -566,14 +567,23 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
        ),
-       global_ranked AS (
-         SELECT id,
-                ROW_NUMBER() OVER (
-                  ORDER BY overall DESC, total_stats DESC, all_star_count DESC, created_at DESC
-                ) AS place
-         FROM user_ranked
-         WHERE user_place <= $2
-       )
+	       global_ranked AS (
+	         SELECT id,
+	                ROW_NUMBER() OVER (
+	                  PARTITION BY CASE
+	                    WHEN overall = 99 THEN 'kryptonite'
+	                    WHEN overall BETWEEN 96 AND 98 THEN 'pink-diamond'
+	                    WHEN overall BETWEEN 92 AND 95 THEN 'diamond'
+	                    WHEN overall BETWEEN 88 AND 91 THEN 'amethyst'
+	                    WHEN overall BETWEEN 82 AND 87 THEN 'gold'
+	                    WHEN overall BETWEEN 76 AND 81 THEN 'silver'
+	                    ELSE 'bronze'
+	                  END
+	                  ORDER BY overall DESC, total_stats DESC, all_star_count DESC, created_at DESC
+	                ) AS place
+	         FROM user_ranked
+	         WHERE user_place <= $2
+	       )
        SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
               ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
               ur.user_icon_id, ur.card_frame_id, ur.card_banner_id, ur.character_id,
@@ -588,10 +598,10 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
          ur.overall DESC,
          ur.total_stats DESC,
          ur.all_star_count DESC,
-         ur.created_at DESC
-       LIMIT $4`,
-      [req.user!.id, GLOBAL_CARDS_PER_USER, GLOBAL_LEADERBOARD_LIMIT, COLLECTION_LIMIT],
-    );
+	         ur.created_at DESC
+	       LIMIT $4`,
+	      [req.user!.id, GLOBAL_CARDS_PER_USER, GLOBAL_TIER_LEADERBOARD_LIMIT, COLLECTION_LIMIT],
+	    );
     res.json({ builds: result.rows.map(rowToCollection) });
   } catch (err) { next(err); }
 });

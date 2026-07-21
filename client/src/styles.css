@@ -632,8 +632,11 @@ body {
 .save-actions { display: flex; gap: 10px; }
 
 /* ---- Leaderboard ---- */
-.sports-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; align-items: start; }
-.leaderboard-card-cell { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.sports-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; align-items: stretch; }
+.leaderboard-card-cell {
+  display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 12px;
+  min-width: 0; height: 100%;
+}
 .global-tier-tabs {
   display: flex; justify-content: center; align-items: stretch; gap: 8px; flex-wrap: wrap;
   margin: 26px 0 0;
@@ -679,7 +682,10 @@ body {
 .pagination-page.is-current { background: var(--red); color: #fff; }
 .pagination-arrow:disabled { opacity: .35; cursor: default; box-shadow: none; }
 .pagination-gap { width: 20px; color: var(--muted); font-size: 20px; line-height: 1; text-align: center; }
-.card-export-actions { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; }
+.card-export-actions {
+  display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap;
+  min-height: 40px;
+}
 .share-card-btn { min-width: 104px; }
 .collection-empty { text-align: center; max-width: 520px; margin: 20px auto; }
 .collection-empty p { font-size: 22px; line-height: 1.25; margin: -4px 0 20px; color: var(--ink); }
@@ -879,7 +885,7 @@ button.drawing-collection-item:focus-visible {
 }
 .shared-card-stage { display: flex; justify-content: center; margin: 0 0 18px; }
 .sports-card-wrap {
-  width: min(100%, 300px);
+  width: min(100%, 300px); flex: 0 0 auto;
   --tier-spot: rgba(239,138,43,.28);
   --tier-start: #fffaf0;
   --tier-mid: #f4ecd9;
@@ -969,7 +975,10 @@ button.drawing-collection-item:focus-visible {
   filter: drop-shadow(1px 1px 0 rgba(22,24,29,.22));
 }
 .sports-card-view { font-size: 17px; }
-.sports-card-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.sports-card-actions {
+  display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap;
+  white-space: nowrap;
+}
 .sports-card-actions .link { font-size: 17px; }
 .sports-card-danger-link { color: var(--red); }
 .sports-card {
