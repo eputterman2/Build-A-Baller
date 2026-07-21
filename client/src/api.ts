@@ -96,7 +96,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ picks, identity, accessories, characterId }),
     }).then(d => d.build),
-  leaderboard: () => req<{ builds: BuildDetail[] }>('/builds/leaderboard').then(d => d.builds),
+  leaderboard: (options?: { limit?: number; minOverall?: number; maxOverall?: number }) => {
+    const params = new URLSearchParams();
+    if (options?.limit) params.set('limit', String(options.limit));
+    if (options?.minOverall != null) params.set('minOverall', String(options.minOverall));
+    if (options?.maxOverall != null) params.set('maxOverall', String(options.maxOverall));
+    const query = params.toString();
+    return req<{ builds: BuildDetail[] }>(`/builds/leaderboard${query ? `?${query}` : ''}`).then(d => d.builds);
+  },
   playerOfDay: () => req<PlayerOfDay>('/builds/player-of-day'),
   playerOfDayLeaderboard: () =>
     req<{ leaders: PlayerOfDayLeader[] }>('/builds/player-of-day-leaderboard').then(d => d.leaders),

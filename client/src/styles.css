@@ -49,7 +49,7 @@ body {
   border-bottom: 3px solid var(--ink);
 }
 .brand { display: flex; align-items: center; text-decoration: none; }
-.nav-logo { height: 64px; display: block; transform: translateY(5px); }
+.nav-logo { height: 64px; display: block; transform: translateY(7px); }
 .nav-links { display: flex; align-items: center; gap: 16px; margin-left: auto; }
 .nav-links a { color: var(--ink); text-decoration: none; font-size: 20px; }
 .nav-links a.active { color: var(--red); }
@@ -173,7 +173,7 @@ body {
     padding: 14px 0 13px;
   }
   .brand { grid-column: 1; grid-row: 1; min-width: 0; }
-  .nav-logo { height: 44px; transform: translateY(2px); }
+  .nav-logo { height: 44px; transform: translateY(4px); }
   .nav-auth {
     grid-column: 2;
     grid-row: 1;
@@ -634,6 +634,35 @@ body {
 /* ---- Leaderboard ---- */
 .sports-card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 22px; align-items: start; }
 .leaderboard-card-cell { display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.global-tier-tabs {
+  display: flex; justify-content: center; align-items: stretch; gap: 8px; flex-wrap: wrap;
+  margin: 26px 0 0;
+}
+.global-tier-tab {
+  min-width: 104px; display: grid; grid-template-columns: 18px 1fr; gap: 2px 7px; align-items: center;
+  border: 2px solid var(--ink); border-radius: 10px; background: var(--card); color: var(--ink);
+  box-shadow: var(--shadow-sm); padding: 7px 9px; cursor: pointer; font-family: var(--font-display);
+  text-align: left; line-height: 1;
+}
+.global-tier-tab > span:not(.global-tier-swatch) { font-size: 16px; white-space: nowrap; }
+.global-tier-tab small { grid-column: 2; color: var(--muted); font-size: 13px; line-height: 1; }
+.global-tier-tab:hover,
+.global-tier-tab.is-current {
+  background: linear-gradient(145deg, var(--tier-start), var(--tier-mid) 58%, var(--tier-end));
+}
+.global-tier-tab.is-current {
+  transform: translate(-1px, -1px); box-shadow: 4px 4px 0 rgba(22,24,29,.8);
+}
+.global-tier-swatch {
+  grid-row: 1 / span 2; width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 999px;
+  background: linear-gradient(145deg, var(--tier-start), var(--tier-mid) 58%, var(--tier-end));
+}
+.global-leaderboard-results {
+  min-height: 140px; transition: opacity .16s ease, transform .16s ease;
+}
+.global-leaderboard-results.is-loading {
+  opacity: .52; transform: translateY(2px); pointer-events: none;
+}
 .leaderboard-pagination {
   display: flex; justify-content: center; align-items: center; gap: 8px; flex-wrap: wrap;
   margin: 26px 0 0;
@@ -929,7 +958,7 @@ button.drawing-collection-item:focus-visible {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
   min-height: 42px; margin: 0 4px 8px;
 }
-.sports-card-rank { font-family: var(--font-display); font-size: 24px; color: var(--red); line-height: 1; }
+.sports-card-rank { font-family: var(--font-display); font-size: 24px; color: var(--tier-number, var(--red)); line-height: 1; }
 .sports-card-user {
   min-width: 0; display: inline-flex; align-items: center; gap: 7px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; font-size: 20px; color: var(--ink);

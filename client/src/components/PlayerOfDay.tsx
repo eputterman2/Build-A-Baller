@@ -49,7 +49,7 @@ export function PlayerOfDay({ data, loading = false, compact = false }: PlayerOf
         </p>
       </div>
       <div className="pod-card">
-        <SportsCard build={build} viewLabel="view" />
+        <SportsCard build={build} viewLabel="view" hideBackAnalysis />
       </div>
     </section>
   );

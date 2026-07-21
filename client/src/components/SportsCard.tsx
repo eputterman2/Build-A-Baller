@@ -13,6 +13,7 @@ interface SportsCardProps {
   viewTo?: string;
   viewLabel?: string;
   metaActions?: ReactNode;
+  hideBackAnalysis?: boolean;
 }
 
 const flagSrc = (file: string) =>
@@ -34,7 +35,14 @@ function flagForCountry(country?: string): { label: string; src: string } | null
   return option ? { label: option.name, src: flagSrc(option.flagFile) } : null;
 }
 
-export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaActions }: SportsCardProps) {
+export function SportsCard({
+  build,
+  rank,
+  viewTo,
+  viewLabel = 'view',
+  metaActions,
+  hideBackAnalysis = false,
+}: SportsCardProps) {
   const [flipped, setFlipped] = useState(false);
   const grade = gradeFor(build.overall);
   const archetype = buildArchetype(build.result);
@@ -53,6 +61,7 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
   const cardFrame = selectedAccessories?.cardFrameId ? ACCESSORIES_BY_ID[selectedAccessories.cardFrameId] : null;
   const cardBanner = selectedAccessories?.cardBannerId ? ACCESSORIES_BY_ID[selectedAccessories.cardBannerId] : null;
   const cardTier = isCustomCharacterId(build.characterId) ? 'onyx' : overallTier(build.overall);
+  const rankTier = overallTier(build.overall);
   const cardViewTo = viewTo ?? `/build/${build.id}`;
   const artCharacterId = artSrc === character.src ? character.id : fallbackCharacter.id;
   useEffect(() => {
@@ -77,7 +86,7 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
     >
       <div className="sports-card-meta">
         {rank != null && (
-          <span className="sports-card-rank">
+          <span className={`sports-card-rank overall-tier-${rankTier}`}>
             {typeof rank === 'number' ? `#${rank}` : rank}
           </span>
         )}
@@ -160,20 +169,22 @@ export function SportsCard({ build, rank, viewTo, viewLabel = 'view', metaAction
               ))}
             </div>
 
-            <div className="card-analysis-mini">
-              <div>
-                <h4>Strengths</h4>
-                <ul>
-                  {topStrengths.map((s, i) => <li key={i}>{s}</li>)}
-                </ul>
+            {!hideBackAnalysis && (
+              <div className="card-analysis-mini">
+                <div>
+                  <h4>Strengths</h4>
+                  <ul>
+                    {topStrengths.map((s, i) => <li key={i}>{s}</li>)}
+                  </ul>
+                </div>
+                <div>
+                  <h4>Weakness</h4>
+                  <ul>
+                    <li>{topWeakness}</li>
+                  </ul>
+                </div>
               </div>
-              <div>
-                <h4>Weakness</h4>
-                <ul>
-                  <li>{topWeakness}</li>
-                </ul>
-              </div>
-            </div>
+            )}
 
             <Link
               className="card-full-stats"

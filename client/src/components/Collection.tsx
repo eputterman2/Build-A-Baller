@@ -245,7 +245,7 @@ export function Collection() {
             <div className="leaderboard-card-cell" key={build.id}>
               <SportsCard
                 build={build}
-                rank={build.place ?? 'unranked'}
+                rank={build.place ?? undefined}
                 viewTo={`/build/${build.id}?from=collection`}
                 metaActions={confirmId === build.id ? (
                   <>

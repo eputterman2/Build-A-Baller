@@ -460,6 +460,10 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
       GLOBAL_LEADERBOARD_LIMIT,
       Math.max(1, Number(req.query.limit) || GLOBAL_LEADERBOARD_LIMIT),
     );
+    const rawMinOverall = typeof req.query.minOverall === 'string' ? Number(req.query.minOverall) : NaN;
+    const rawMaxOverall = typeof req.query.maxOverall === 'string' ? Number(req.query.maxOverall) : NaN;
+    const minOverall = Number.isFinite(rawMinOverall) ? rawMinOverall : 0;
+    const maxOverall = Number.isFinite(rawMaxOverall) ? rawMaxOverall : 99;
     const result = await query<BuildRow>(
       `WITH user_ranked AS (
          SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
@@ -471,6 +475,8 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
                   ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at DESC
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
+         WHERE b.overall >= $3
+           AND b.overall <= $4
        )
        SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
               ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
@@ -480,7 +486,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
        WHERE ur.user_place <= $2
        ORDER BY ur.overall DESC, ur.total_stats DESC, ur.all_star_count DESC, ur.created_at DESC
        LIMIT $1`,
-      [limit, GLOBAL_CARDS_PER_USER],
+      [limit, GLOBAL_CARDS_PER_USER, minOverall, maxOverall],
     );
     res.json({ builds: result.rows.map(rowToDetail) });
   } catch (err) { next(err); }

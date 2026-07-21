@@ -4,9 +4,21 @@ import { api } from '../api';
 import { downloadCardImage, shareCardLink } from '../util';
 import { SportsCard } from './SportsCard';
 
-const GLOBAL_PAGE_SIZE = 9;
+const GLOBAL_TIER_SIZE = 9;
 const PLAYER_OF_DAY_PAGE_SIZE = 10;
 const DRAWING_LEADERS_PAGE_SIZE = 10;
+
+const GLOBAL_TIERS = [
+  { id: 'kryptonite', label: 'Kryptonite', min: 99, max: 99 },
+  { id: 'pink-diamond', label: 'Pink Diamond', min: 96, max: 98 },
+  { id: 'diamond', label: 'Diamond', min: 92, max: 95 },
+  { id: 'amethyst', label: 'Amethyst', min: 88, max: 91 },
+  { id: 'gold', label: 'Gold', min: 82, max: 87 },
+  { id: 'silver', label: 'Silver', min: 76, max: 81 },
+  { id: 'bronze', label: 'Bronze', min: 0, max: 75 },
+] as const;
+
+type GlobalTierId = typeof GLOBAL_TIERS[number]['id'];
 
 function pageNumbers(currentPage: number, totalPages: number) {
   const pages = [...new Set([1, currentPage - 1, currentPage, currentPage + 1, totalPages])]
@@ -77,21 +89,38 @@ export function Leaderboard() {
   const [playerOfDayLeaders, setPlayerOfDayLeaders] = useState<PlayerOfDayLeader[] | null>(null);
   const [drawingLeaders, setDrawingLeaders] = useState<DrawingCollectionLeader[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [globalLoading, setGlobalLoading] = useState(true);
   const [shareStatus, setShareStatus] = useState<{ id: string; label: string } | null>(null);
   const [downloadStatus, setDownloadStatus] = useState<{ id: string; label: string } | null>(null);
-  const [cardPage, setCardPage] = useState(1);
+  const [selectedTier, setSelectedTier] = useState<GlobalTierId>('kryptonite');
   const [leaderPage, setLeaderPage] = useState(1);
   const [drawingLeaderPage, setDrawingLeaderPage] = useState(1);
 
   useEffect(() => {
-    Promise.all([api.leaderboard(), api.playerOfDayLeaderboard(), api.drawingCollectionLeaderboard()])
-      .then(([globalBuilds, dailyLeaders, collectionLeaders]) => {
-        setBuilds(globalBuilds);
+    Promise.all([api.playerOfDayLeaderboard(), api.drawingCollectionLeaderboard()])
+      .then(([dailyLeaders, collectionLeaders]) => {
         setPlayerOfDayLeaders(dailyLeaders);
         setDrawingLeaders(collectionLeaders);
       })
       .catch(e => setError((e as Error).message));
   }, []);
+
+  useEffect(() => {
+    let alive = true;
+    const tier = GLOBAL_TIERS.find(item => item.id === selectedTier) ?? GLOBAL_TIERS[0];
+    setGlobalLoading(true);
+    api.leaderboard({ limit: GLOBAL_TIER_SIZE, minOverall: tier.min, maxOverall: tier.max })
+      .then(globalBuilds => {
+        if (alive) setBuilds(globalBuilds);
+      })
+      .catch(e => {
+        if (alive) setError((e as Error).message);
+      })
+      .finally(() => {
+        if (alive) setGlobalLoading(false);
+      });
+    return () => { alive = false; };
+  }, [selectedTier]);
 
   if (error) return <div className="notice error">Couldn’t load leaderboard: {error}</div>;
   if (!builds || !playerOfDayLeaders || !drawingLeaders) return <div className="notice">Loading leaderboard…</div>;
@@ -125,9 +154,8 @@ export function Leaderboard() {
       setTimeout(() => setDownloadStatus(null), 1800);
     }
   };
-  const cardPageCount = Math.ceil(builds.length / GLOBAL_PAGE_SIZE);
-  const cardPageStart = (cardPage - 1) * GLOBAL_PAGE_SIZE;
-  const visibleBuilds = builds.slice(cardPageStart, cardPageStart + GLOBAL_PAGE_SIZE);
+  const selectedTierDetails = GLOBAL_TIERS.find(tier => tier.id === selectedTier) ?? GLOBAL_TIERS[0];
+  const globalBoardBusy = globalLoading && builds.length > 0;
   const leaderPageCount = Math.ceil(playerOfDayLeaders.length / PLAYER_OF_DAY_PAGE_SIZE);
   const leaderPageStart = (leaderPage - 1) * PLAYER_OF_DAY_PAGE_SIZE;
   const visiblePlayerOfDayLeaders = playerOfDayLeaders.slice(
@@ -144,31 +172,43 @@ export function Leaderboard() {
   return (
     <div className="leaderboard">
       <h2 className="results-title">Global Leaderboard</h2>
-      {builds.length === 0 ? (
-        <div className="notice">No builds yet — be the first to save one!</div>
-      ) : (
-        <div className="sports-card-grid">
-          {visibleBuilds.map((b, i) => (
-            <div className="leaderboard-card-cell" key={b.id}>
-              <SportsCard build={b} rank={cardPageStart + i + 1} />
-              <div className="card-export-actions">
-                <button className="btn btn-small share-card-btn" onClick={() => shareBuild(b)}>
-                  {shareStatus?.id === b.id ? shareStatus.label : 'Share'}
-                </button>
-                <button className="btn btn-small share-card-btn" onClick={() => downloadBuild(b)}>
-                  {downloadStatus?.id === b.id ? downloadStatus.label : 'Download'}
-                </button>
+      <div className={`global-leaderboard-results${globalBoardBusy ? ' is-loading' : ''}`} aria-busy={globalLoading}>
+        {builds.length === 0 ? (
+          <div className="notice">No {selectedTierDetails.label} builds yet.</div>
+        ) : (
+          <div className="sports-card-grid">
+            {builds.map((b, i) => (
+              <div className="leaderboard-card-cell" key={b.id}>
+                <SportsCard build={b} rank={i + 1} />
+                <div className="card-export-actions">
+                  <button className="btn btn-small share-card-btn" onClick={() => shareBuild(b)}>
+                    {shareStatus?.id === b.id ? shareStatus.label : 'Share'}
+                  </button>
+                  <button className="btn btn-small share-card-btn" onClick={() => downloadBuild(b)}>
+                    {downloadStatus?.id === b.id ? downloadStatus.label : 'Download'}
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
-      <Pagination
-        currentPage={cardPage}
-        totalPages={cardPageCount}
-        onChange={setCardPage}
-        label="Global leaderboard pages"
-      />
+            ))}
+          </div>
+        )}
+      </div>
+      <div className="global-tier-tabs" aria-label="Global leaderboard tiers" role="tablist">
+        {GLOBAL_TIERS.map(tier => (
+          <button
+            aria-selected={tier.id === selectedTier}
+            className={`global-tier-tab overall-tier-${tier.id}${tier.id === selectedTier ? ' is-current' : ''}`}
+            key={tier.id}
+            onClick={() => setSelectedTier(tier.id)}
+            role="tab"
+            type="button"
+          >
+            <span className="global-tier-swatch" aria-hidden="true" />
+            <span>{tier.label}</span>
+            <small>{tier.min === tier.max ? tier.max : `${tier.min}-${tier.max}`}</small>
+          </button>
+        ))}
+      </div>
       <section className="player-of-day-leaderboard">
         <h2 className="results-title">Player of the Day Leaders</h2>
         {playerOfDayLeaders.length === 0 ? (
