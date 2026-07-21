@@ -11,6 +11,7 @@ interface UserRow {
   id: string;
   username: string;
   email: string | null;
+  equipped_user_icon_id?: string;
   password_hash: string;
 }
 
@@ -37,7 +38,7 @@ function hashResetToken(token: string): string {
 export async function registerUser(username: string, email: string, password: string): Promise<AuthUser> {
   const normalizedEmail = normalizeEmail(email);
   const existing = await query<UserRow>(
-    'SELECT id, username, email, password_hash FROM users WHERE username = $1 OR lower(email) = $2',
+    'SELECT id, username, email, equipped_user_icon_id, password_hash FROM users WHERE username = $1 OR lower(email) = $2',
     [username, normalizedEmail],
   );
   if (existing.rowCount) {
@@ -54,7 +55,7 @@ export async function registerUser(username: string, email: string, password: st
     'INSERT INTO users (id, username, email, password_hash) VALUES ($1, $2, $3, $4)',
     [id, username, normalizedEmail, hash],
   );
-  return { id, username };
+  return { id, username, userIconId: '' };
 }
 
 export async function loginUser(email: string, password: string): Promise<AuthUser> {
@@ -71,7 +72,7 @@ export async function loginUser(email: string, password: string): Promise<AuthUs
     (err as { status?: number }).status = 401;
     throw err;
   }
-  return { id: row.id, username: row.username };
+  return { id: row.id, username: row.username, userIconId: row.equipped_user_icon_id ?? '' };
 }
 
 export async function requestPasswordReset(email: string): Promise<PasswordResetRequest | null> {
@@ -128,13 +129,13 @@ async function extractUser(req: Request): Promise<AuthUser | null> {
   try {
     const payload = jwt.verify(header.slice(7), config.jwtSecret) as jwt.JwtPayload;
     if (!payload.sub) return null;
-    const result = await query<Pick<UserRow, 'id' | 'username'>>(
-      'SELECT id, username FROM users WHERE id = $1',
+    const result = await query<Pick<UserRow, 'id' | 'username' | 'equipped_user_icon_id'>>(
+      'SELECT id, username, equipped_user_icon_id FROM users WHERE id = $1',
       [String(payload.sub)],
     );
     const user = result.rows[0];
     return user && !hasDisallowedPublicContent(user.username)
-      ? { id: user.id, username: user.username }
+      ? { id: user.id, username: user.username, userIconId: user.equipped_user_icon_id ?? '' }
       : null;
   } catch {
     return null;

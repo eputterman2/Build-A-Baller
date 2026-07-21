@@ -65,6 +65,10 @@ const accessoriesSchema = z.object({
   }),
 });
 
+const usernameIconSchema = z.object({
+  userIconId: z.string().optional(),
+});
+
 const characterSchema = z.object({
   characterId: z.string(),
 });
@@ -163,6 +167,24 @@ async function normalizeBuildAccessories(
   return { accessories: { userIconId, cardFrameId, cardBannerId }, error: null };
 }
 
+async function normalizeUsernameIcon(
+  userId: string,
+  userIconId?: string,
+): Promise<{ userIconId: string; error: string | null }> {
+  const ownedBundleIds = await getOwnedBundleIds(userId);
+  const normalized = validateAccessoryId(cleanAccessoryId(userIconId), 'userIcon', ownedBundleIds);
+  if (normalized == null) return { userIconId: '', error: 'That username icon is not available on your account.' };
+  return { userIconId: normalized, error: null };
+}
+
+async function getEquippedUsernameIcon(userId: string): Promise<string> {
+  const result = await query<{ equipped_user_icon_id: string }>(
+    'SELECT equipped_user_icon_id FROM users WHERE id = $1',
+    [userId],
+  );
+  return result.rows[0]?.equipped_user_icon_id ?? '';
+}
+
 function characterIdForBuild(
   result?: ScoreResult | unknown,
   picks?: PickMap | unknown,
@@ -254,7 +276,7 @@ function rowToSummary(row: BuildRow): BuildSummary {
     motto: row.motto ?? EMPTY_PLAYER_IDENTITY.motto,
     country: row.country ?? EMPTY_PLAYER_IDENTITY.country,
   });
-  return {
+	  return {
     id: row.id,
     username: safePublicUsername(row.username),
     overall: row.overall,
@@ -262,11 +284,11 @@ function rowToSummary(row: BuildRow): BuildSummary {
     gradeLabel: row.grade_label,
     createdAt: row.created_at,
     identity,
-    accessories: {
-      userIconId: row.user_icon_id ?? '',
-      cardFrameId: row.card_frame_id ?? '',
-      cardBannerId: row.card_banner_id ?? '',
-    },
+	    accessories: {
+	      userIconId: row.equipped_user_icon_id || row.user_icon_id || '',
+	      cardFrameId: row.card_frame_id ?? '',
+	      cardBannerId: row.card_banner_id ?? '',
+	    },
     characterId: characterIdForBuild(row.result, row.picks, row.character_id),
     originalOwnerDrawing: Boolean(row.original_owner_drawing),
   };
@@ -290,8 +312,9 @@ function rowToCollection(row: BuildRow): CollectionBuild {
 interface BuildRow {
   id: string;
   user_id?: string;
-  username: string;
-  overall: number;
+	  username: string;
+	  equipped_user_icon_id?: string;
+	  overall: number;
   grade: string;
   grade_label: string;
   player_name?: string;
@@ -381,6 +404,11 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
       res.status(400).json({ error: accessoriesError });
       return;
     }
+    const equippedUserIconId = await getEquippedUsernameIcon(req.user!.id);
+    const savedAccessories = {
+      ...accessories,
+      userIconId: cleanAccessoryId(rawAccessories?.userIconId) ? accessories.userIconId : equippedUserIconId,
+    };
     const moderationError = identityModerationError(identity);
     if (moderationError) {
       res.status(400).json({ error: moderationError });
@@ -432,7 +460,7 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
       [id, req.user!.id, result.overall, grade.g, grade.label,
        identity.playerName, identity.motto, identity.country,
-       accessories.userIconId, accessories.cardFrameId, accessories.cardBannerId, characterId,
+       savedAccessories.userIconId, savedAccessories.cardFrameId, savedAccessories.cardBannerId, characterId,
        JSON.stringify(picks), JSON.stringify(result),
        rankMetrics.totalStats, rankMetrics.allStarCount, RANK_METRICS_VERSION],
     );
@@ -445,7 +473,7 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
         overall: result.overall, grade: grade.g, gradeLabel: grade.label,
         createdAt: new Date().toISOString(),
         identity,
-        accessories,
+        accessories: savedAccessories,
         characterId,
         originalOwnerDrawing,
         result, picks,
@@ -467,7 +495,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
     const maxOverall = Number.isFinite(rawMaxOverall) ? rawMaxOverall : 99;
     const result = await query<BuildRow>(
       `WITH user_ranked AS (
-         SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
                 b.player_name, b.motto, b.country, b.picks, b.result,
                 b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
                 b.total_stats, b.all_star_count,
@@ -479,7 +507,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
          WHERE b.overall >= $3
            AND b.overall <= $4
        )
-       SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
+       SELECT ur.id, ur.user_id, ur.username, ur.equipped_user_icon_id, ur.overall, ur.grade, ur.grade_label, ur.created_at,
               ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
               ur.user_icon_id, ur.card_frame_id, ur.card_banner_id, ur.character_id,
               ${originalOwnerDrawingSql('ur')}
@@ -499,7 +527,7 @@ buildsRouter.get('/player-of-day', async (req, res, next) => {
   try {
     const dateResult = await query<{ day: string }>('SELECT CURRENT_DATE::text AS day');
     const result = await query<BuildRow>(
-      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+	      `SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country, b.picks, b.result,
               b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
               ${originalOwnerDrawingSql('b')}
@@ -539,7 +567,7 @@ buildsRouter.get('/player-of-day-leaderboard', async (_req, res, next) => {
 buildsRouter.get('/mine', requireAuth, async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
-      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+	      `SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country,
               b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
               ${originalOwnerDrawingSql('b')}
@@ -557,7 +585,7 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
       `WITH user_ranked AS (
-         SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label,
+	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label,
                 b.created_at, b.player_name, b.motto, b.country, b.picks, b.result,
                 b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
                 b.total_stats, b.all_star_count,
@@ -584,7 +612,7 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
 	         FROM user_ranked
 	         WHERE user_place <= $2
 	       )
-       SELECT ur.id, ur.user_id, ur.username, ur.overall, ur.grade, ur.grade_label, ur.created_at,
+       SELECT ur.id, ur.user_id, ur.username, ur.equipped_user_icon_id, ur.overall, ur.grade, ur.grade_label, ur.created_at,
               ur.player_name, ur.motto, ur.country, ur.picks, ur.result,
               ur.user_icon_id, ur.card_frame_id, ur.card_banner_id, ur.character_id,
               ${originalOwnerDrawingSql('ur')},
@@ -753,7 +781,7 @@ buildsRouter.get('/drawing-collection-leaderboard', async (_req, res, next) => {
 buildsRouter.get('/player-of-day-wins', requireAuth, async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
-      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label,
+	      `SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label,
               b.created_at, b.player_name, b.motto, b.country, b.picks, b.result,
               b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
               ${originalOwnerDrawingSql('b')},
@@ -833,6 +861,22 @@ buildsRouter.patch('/:id/accessories', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Update the account-level username icon shown beside this user's name on cards.
+buildsRouter.patch('/username-icon', requireAuth, async (req, res, next) => {
+  try {
+    const { userIconId: rawUserIconId } = usernameIconSchema.parse(req.body);
+    const { userIconId, error } = await normalizeUsernameIcon(req.user!.id, rawUserIconId);
+    if (error) {
+      res.status(400).json({ error });
+      return;
+    }
+
+    await query('UPDATE users SET equipped_user_icon_id = $1 WHERE id = $2', [userIconId, req.user!.id]);
+    await query('UPDATE builds SET user_icon_id = $1 WHERE user_id = $2', [userIconId, req.user!.id]);
+    res.json({ userIconId });
+  } catch (err) { next(err); }
+});
+
 // Swap the saved player drawing for one the user has unlocked and this overall can use.
 buildsRouter.patch('/:id/character', requireAuth, async (req, res, next) => {
   try {
@@ -899,7 +943,7 @@ buildsRouter.delete('/:id', requireAuth, async (req, res, next) => {
 buildsRouter.get('/:id', async (req, res, next) => {
   try {
     const result = await query<BuildRow>(
-      `SELECT b.id, b.user_id, u.username, b.overall, b.grade, b.grade_label, b.created_at,
+	      `SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
               b.player_name, b.motto, b.country, b.picks, b.result,
               b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
               ${originalOwnerDrawingSql('b')}

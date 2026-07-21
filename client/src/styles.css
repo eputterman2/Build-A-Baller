@@ -964,18 +964,19 @@ button.drawing-collection-item:focus-visible {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
   min-height: 42px; margin: 0 4px 8px;
 }
-.sports-card-rank { font-family: var(--font-display); font-size: 24px; color: var(--tier-number, var(--red)); line-height: 1; }
+.sports-card-rank { grid-column: 1; font-family: var(--font-display); font-size: 24px; color: var(--tier-number, var(--red)); line-height: 1; }
 .sports-card-user {
-  min-width: 0; display: inline-flex; align-items: center; gap: 7px; overflow: hidden;
+  grid-column: 2; min-width: 0; max-width: 100%; display: inline-flex; align-items: center; gap: 7px; overflow: hidden;
   text-overflow: ellipsis; white-space: nowrap; font-size: 20px; color: var(--ink);
 }
-.sports-card-user span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.sports-card-user span { min-width: 0; flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
 .sports-card-user-icon {
   width: 42px; height: 42px; flex: 0 0 auto; object-fit: contain;
   filter: drop-shadow(1px 1px 0 rgba(22,24,29,.22));
 }
 .sports-card-view { font-size: 17px; }
 .sports-card-actions {
+  grid-column: 3;
   display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: nowrap;
   white-space: nowrap;
 }

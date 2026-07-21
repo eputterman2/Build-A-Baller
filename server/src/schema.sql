@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS users (
 );
 
 ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS equipped_user_icon_id TEXT NOT NULL DEFAULT '';
 CREATE UNIQUE INDEX IF NOT EXISTS users_email_lower_idx
   ON users (lower(email))
   WHERE email IS NOT NULL;
@@ -49,6 +50,17 @@ ALTER TABLE builds ADD COLUMN IF NOT EXISTS user_icon_id TEXT NOT NULL DEFAULT '
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS card_frame_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS card_banner_id TEXT NOT NULL DEFAULT '';
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS character_id TEXT NOT NULL DEFAULT '';
+
+UPDATE users u
+SET equipped_user_icon_id = picked.user_icon_id
+FROM (
+  SELECT DISTINCT ON (user_id) user_id, user_icon_id
+  FROM builds
+  WHERE user_icon_id <> ''
+  ORDER BY user_id, created_at DESC
+) picked
+WHERE u.id = picked.user_id
+  AND u.equipped_user_icon_id = '';
 
 CREATE TABLE IF NOT EXISTS user_bundles (
   user_id      TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,

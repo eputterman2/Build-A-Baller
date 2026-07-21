@@ -143,6 +143,11 @@ export const api = {
       method: 'PATCH',
       body: JSON.stringify({ accessories }),
     }).then(d => d.accessories),
+  updateUsernameIcon: (userIconId: string) =>
+    req<{ userIconId: string }>('/builds/username-icon', {
+      method: 'PATCH',
+      body: JSON.stringify({ userIconId }),
+    }).then(d => d.userIconId),
   updateBuildCharacter: (id: string, characterId: string) =>
     req<{ characterId: string; originalOwnerDrawing: boolean }>('/builds/' + id + '/character', {
       method: 'PATCH',

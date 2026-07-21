@@ -116,25 +116,13 @@ export function Accessories() {
 
   const applyUserIconToUsername = async () => {
     if (!selectedAccessory || selectedAccessory.type !== 'userIcon') return;
-    if (builds.length === 0) {
-      setError('Save a card before applying a username icon.');
-      return;
-    }
     setApplying(true);
     setError(null);
     setMessage(null);
     try {
-      const updates = await Promise.all(builds.map(async build => {
-        const updated = await api.updateBuildAccessories(build.id, {
-          ...EMPTY_BUILD_ACCESSORIES,
-          ...build.accessories,
-          userIconId: selectedAccessory.id,
-        });
-        return [build.id, updated] as const;
-      }));
-      const updatedById = new Map(updates);
+      const userIconId = await api.updateUsernameIcon(selectedAccessory.id);
       setBuilds(current => current.map(item => (
-        updatedById.has(item.id) ? { ...item, accessories: updatedById.get(item.id)! } : item
+        { ...item, accessories: { ...EMPTY_BUILD_ACCESSORIES, ...item.accessories, userIconId } }
       )));
       setMessage(`${selectedAccessory.name} applied to your username.`);
       setSelectedAccessory(null);
@@ -147,25 +135,13 @@ export function Accessories() {
 
   const removeUserIconFromUsername = async () => {
     if (!selectedAccessory || selectedAccessory.type !== 'userIcon') return;
-    if (builds.length === 0) {
-      setError('Save a card before changing your username icon.');
-      return;
-    }
     setApplying(true);
     setError(null);
     setMessage(null);
     try {
-      const updates = await Promise.all(builds.map(async build => {
-        const updated = await api.updateBuildAccessories(build.id, {
-          ...EMPTY_BUILD_ACCESSORIES,
-          ...build.accessories,
-          userIconId: '',
-        });
-        return [build.id, updated] as const;
-      }));
-      const updatedById = new Map(updates);
+      const userIconId = await api.updateUsernameIcon('');
       setBuilds(current => current.map(item => (
-        updatedById.has(item.id) ? { ...item, accessories: updatedById.get(item.id)! } : item
+        { ...item, accessories: { ...EMPTY_BUILD_ACCESSORIES, ...item.accessories, userIconId } }
       )));
       setMessage('Username icon removed.');
       setSelectedAccessory(null);
