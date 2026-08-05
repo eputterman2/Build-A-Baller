@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import {
-  ACCESSORIES_BY_ID, ARCHETYPE_CHARACTER_RULES, accessoriesForBundle, type MarketBundle,
+  ACCESSORIES_BY_ID, ARCHETYPE_CHARACTER_RULES, accessoriesForBundle, type Accessory, type MarketBundle,
 } from '@shared/index';
 import { api } from '../api';
 import { useAuth } from '../auth';
@@ -94,6 +94,17 @@ function readImageDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('Could not read that photo.'));
     reader.readAsDataURL(file);
   });
+}
+
+function MarketItemArt({ item }: { item: Pick<MarketPreviewItem, 'id' | 'src' | 'type'> | Accessory }) {
+  if (item.type === 'cardFrame') {
+    return (
+      <span className="frame-preview" aria-hidden="true">
+        <span className={`frame-preview-card sports-card-front has-card-frame card-frame-${item.id}`} />
+      </span>
+    );
+  }
+  return <img src={item.src} alt="" />;
 }
 
 export function Market() {
@@ -430,7 +441,7 @@ export function Market() {
                         type: accessory.type,
                       })}
                     >
-                      <img src={accessory.src} alt="" />
+                      <MarketItemArt item={accessory} />
                       <small>{ACCESSORIES_BY_ID[accessory.id]?.name ?? accessory.name}</small>
                     </button>
                   ))}
@@ -564,7 +575,7 @@ export function Market() {
           <div className="modal market-preview-modal" onClick={event => event.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="market-preview-title">
             <button className="modal-close" onClick={() => setPreviewItem(null)} aria-label="Close">×</button>
             <div className={`market-preview-art market-preview-art-${previewItem.type}`}>
-              <img src={previewItem.src} alt="" />
+              <MarketItemArt item={previewItem} />
             </div>
             <h2 id="market-preview-title">{previewItem.name}</h2>
           </div>

@@ -28,39 +28,91 @@ function pickForBuild<T>(options: readonly T[], r: ScoreResult, salt: string): T
   return options[buildHash(r, salt) % options.length];
 }
 
+function pickTwoForBuild<T>(options: readonly T[], r: ScoreResult, salt: string): T[] {
+  const first = buildHash(r, `${salt}-first`) % options.length;
+  const step = 1 + (buildHash(r, `${salt}-step`) % (options.length - 1));
+  return [options[first], options[(first + step) % options.length]];
+}
+
 // Short, direct alternatives keep scouting reports from repeating the same line.
 const STRENGTH: Record<AttributeKey, readonly string[]> = {
-  height: ['Good size', 'Strong height advantage', 'Plays with size'],
-  weight: ['Strong frame', 'Handles contact', 'Hard to move'],
-  wingspan: ['Long reach', 'Uses length well', 'Covers space with length'],
-  athleticism: ['Strong athlete', 'Explosive movement', 'Plays above the rim'],
-  speed: ['Fast first step', 'Quick in the open floor', 'Gets up the court quickly'],
-  ballHandling: ['Reliable handle', 'Creates off the dribble', 'Protects the ball'],
-  shooting: ['Reliable shooter', 'Strong jump shot', 'Spaces the floor'],
-  postScoring: ['Strong post game', 'Scores inside', 'Reliable on the block'],
-  defense: ['Strong defender', 'Guards multiple positions', 'Makes stops'],
-  passing: ['Good passer', 'Finds open teammates', 'Moves the ball well'],
-  iq: ['Makes smart decisions', 'Reads the game well', 'Strong basketball IQ'],
-  attitude: ['Good teammate', 'Plays the right way', 'Team-first approach'],
-  clutch: ['Reliable late in games', 'Handles pressure', 'Makes big plays'],
-  durability: ['Stays available', 'Durable player', 'Handles a heavy workload'],
+  height: ['Good size', 'Strong height advantage', 'Plays with size', 'Sees over the defense', 'Has a real size edge', 'Finishes over contests', 'Changes passing angles', 'Makes the court look smaller', 'Forces high releases', 'Owns vertical space', 'Has matchup size', 'Plays tall in traffic'],
+  weight: ['Strong frame', 'Handles contact', 'Hard to move', 'Absorbs bumps well', 'Can play through bodies', 'Wins shoulder battles', 'Sets a sturdy base', 'Creates space with strength', 'Holds ground inside', 'Punishes lighter matchups', 'Keeps balance through contact', 'Brings real physicality'],
+  wingspan: ['Long reach', 'Uses length well', 'Covers space with length', 'Gets into passing lanes', 'Contests with reach', 'Bothers clean looks', 'Extends plays defensively', 'Reaches plays others miss', 'Closes gaps quickly', 'Makes passing lanes tight', 'Finishes with extension', 'Turns length into stops'],
+  athleticism: ['Strong athlete', 'Explosive movement', 'Plays above the rim', 'Gets off the floor quickly', 'Puts pressure on the rim', 'Attacks with burst', 'Finishes with pop', 'Moves with power', 'Creates highlight plays', 'Turns defense into offense', 'Explodes through openings', 'Changes pace with force'],
+  speed: ['Fast first step', 'Quick in the open floor', 'Gets up the court quickly', 'Pushes the pace', 'Beats defenders to spots', 'Creates early offense', 'Runs lanes hard', 'Turns corners quickly', 'Pressures slow defenders', 'Controls tempo with speed', 'Gets downhill fast', 'Makes transition dangerous'],
+  ballHandling: ['Reliable handle', 'Creates off the dribble', 'Protects the ball', 'Keeps defenders guessing', 'Can break pressure', 'Changes direction cleanly', 'Controls the possession', 'Gets to preferred spots', 'Keeps the dribble alive', 'Creates separation', 'Handles traffic well', 'Has useful counters'],
+  shooting: ['Reliable shooter', 'Strong jump shot', 'Spaces the floor', 'Threat from deep', 'Punishes open looks', 'Stretches defenses', 'Makes defenses chase', 'Hits rhythm jumpers', 'Keeps closeouts honest', 'Can score without pounding the ball', 'Opens driving lanes', 'Shoots with confidence'],
+  postScoring: ['Strong post game', 'Scores inside', 'Reliable on the block', 'Finishes through contact', 'Has touch near the rim', 'Punishes switches', 'Creates deep position', 'Scores with patience inside', 'Has a useful drop step', 'Finds angles near the basket', 'Turns seals into points', 'Works well from the dunker spot'],
+  defense: ['Strong defender', 'Guards multiple positions', 'Makes stops', 'Disrupts actions', 'Tough to score on', 'Takes matchups seriously', 'Blows up simple actions', 'Forces tough shots', 'Stays connected defensively', 'Covers mistakes', 'Makes drivers uncomfortable', 'Anchors possessions'],
+  passing: ['Good passer', 'Finds open teammates', 'Moves the ball well', 'Creates easy looks', 'Keeps the offense flowing', 'Hits cutters on time', 'Reads help defense', 'Rewards movement', 'Makes the extra pass', 'Keeps teammates involved', 'Passes out of pressure', 'Creates rhythm for others'],
+  iq: ['Makes smart decisions', 'Reads the game well', 'Strong basketball IQ', 'Rarely looks rushed', 'Understands spacing', 'Knows the next pass', 'Plays one step ahead', 'Chooses good shots', 'Sees the floor clearly', 'Understands the assignment', 'Keeps possessions organized', 'Makes winning reads'],
+  attitude: ['Good teammate', 'Plays the right way', 'Team-first approach', 'Brings steady energy', 'Keeps the group connected', 'Accepts the role', 'Lifts teammates up', 'Competes without forcing it', 'Brings positive energy', 'Stays coachable', 'Keeps the bench engaged', 'Does the little things'],
+  clutch: ['Reliable late in games', 'Handles pressure', 'Makes big plays', 'Wants the big moment', 'Delivers when it matters', 'Stays calm late', 'Trustworthy in closing time', 'Hits timely shots', 'Does not shrink late', 'Makes pressure plays', 'Keeps composure', 'Finishes possessions under stress'],
+  durability: ['Stays available', 'Durable player', 'Handles a heavy workload', 'Built for long runs', 'Can carry heavy minutes', 'Bounces back quickly', 'Ready for repeated games', 'Keeps producing through fatigue', 'Takes contact and keeps going', 'Reliable over long stretches', 'Handles playoff minutes', 'Built to last'],
 };
 const WEAKNESS: Record<AttributeKey, readonly string[]> = {
-  height: ['Lacks size', 'Small for the position', 'Can be targeted by bigger players'],
-  weight: ['Struggles with contact', 'Needs more strength', 'Can be pushed around'],
-  wingspan: ['Limited reach', 'Has trouble contesting', 'Short arms hurt coverage'],
-  athleticism: ['Limited athleticism', 'Lacks explosiveness', 'Does not play above the rim'],
-  speed: ['Limited quickness', 'Slow in transition', 'Struggles to stay in front'],
-  ballHandling: ['Loose handle', 'Struggles under pressure', 'Limited off the dribble'],
-  shooting: ['Unreliable shooter', 'Inconsistent jump shot', 'Does not space the floor'],
-  postScoring: ['Limited post game', 'Not a post threat', 'Struggles to finish inside'],
-  defense: ['Limited defensive impact', 'Struggles to get stops', 'Targeted on defense'],
-  passing: ['Limited passing vision', 'Misses open teammates', 'Turns the ball over'],
-  iq: ['Makes poor decisions', 'Slow reads', 'Low basketball awareness'],
-  attitude: ['Inconsistent effort', 'Can hurt team chemistry', 'Difficult teammate'],
-  clutch: ['Quiet late in games', 'Unreliable in big moments', 'Struggles under pressure'],
-  durability: ['Injury concern', 'May miss time', 'Struggles to stay healthy'],
+  height: ['Lacks size', 'Small for the position', 'Can be targeted by bigger players', 'Has trouble seeing over length', 'Needs help against tall matchups'],
+  weight: ['Struggles with contact', 'Needs more strength', 'Can be pushed around', 'Gets bumped off spots', 'Can lose ground in the paint'],
+  wingspan: ['Limited reach', 'Has trouble contesting', 'Short arms hurt coverage', 'Can be late to passing lanes', 'Needs perfect positioning to bother shots'],
+  athleticism: ['Limited athleticism', 'Lacks explosiveness', 'Does not play above the rim', 'Struggles to pop off the floor', 'Needs skill to beat athletes'],
+  speed: ['Limited quickness', 'Slow in transition', 'Struggles to stay in front', 'Can get beat to spots', 'Needs a head start in space'],
+  ballHandling: ['Loose handle', 'Struggles under pressure', 'Limited off the dribble', 'Can get sped up', 'Needs a simpler handle package'],
+  shooting: ['Unreliable shooter', 'Inconsistent jump shot', 'Does not space the floor', 'Can go cold quickly', 'Defenses may sag off'],
+  postScoring: ['Limited post game', 'Not a post threat', 'Struggles to finish inside', 'Needs work around the rim', 'Can get rushed in the paint'],
+  defense: ['Limited defensive impact', 'Struggles to get stops', 'Targeted on defense', 'Can lose focus off the ball', 'Needs cover behind them'],
+  passing: ['Limited passing vision', 'Misses open teammates', 'Turns the ball over', 'Can force risky passes', 'Does not always read help defense'],
+  iq: ['Makes poor decisions', 'Slow reads', 'Low basketball awareness', 'Can miss the simple play', 'Gets caught thinking too long'],
+  attitude: ['Inconsistent effort', 'Can hurt team chemistry', 'Difficult teammate', 'Body language can dip', 'Needs a steadier motor'],
+  clutch: ['Quiet late in games', 'Unreliable in big moments', 'Struggles under pressure', 'Can fade in closing time', 'Needs cleaner late-game reps'],
+  durability: ['Injury concern', 'May miss time', 'Struggles to stay healthy', 'Needs careful minutes', 'Wear and tear could add up'],
 };
+const SOFT_WEAKNESS: Record<AttributeKey, readonly string[]> = {
+  height: ['Size can still be tested', 'Tall matchups may bother them', 'Could use a little more size', 'Can struggle against bigger lineups', 'Needs smart angles against length'],
+  weight: ['Physical matchups can wear them down', 'Could use more strength', 'Contact can still move them', 'Needs leverage against stronger players', 'Can be tested by powerful opponents'],
+  wingspan: ['Length is not a major weapon', 'Contests need to be timed well', 'Can give up some reach', 'Passing lanes are not automatic', 'Needs positioning more than length'],
+  athleticism: ['Not always the best athlete on the floor', 'Explosiveness can be matchup-dependent', 'Needs timing more than bounce', 'Can look ordinary in traffic', 'Athletic edge is not guaranteed'],
+  speed: ['Not always a blur in space', 'Can be beaten by quicker guards', 'Pace can slow down under pressure', 'Needs angles to create separation', 'Transition speed is not automatic'],
+  ballHandling: ['Handle can tighten up', 'Pressure can bother the dribble', 'Can get loose with the ball', 'Needs cleaner counters', 'May need help initiating offense'],
+  shooting: ['Shot can still run hot and cold', 'Needs to prove the jumper nightly', 'Can pass up tough jumpers', 'Spacing value can swing', 'Defenses may test the shot'],
+  postScoring: ['Interior touch can improve', 'Not always a paint mismatch', 'Can settle instead of attacking inside', 'Needs cleaner counters on the block', 'Paint scoring is not automatic'],
+  defense: ['Defense can be matchup-dependent', 'Can lose a step off the ball', 'Not always a stopper', 'Needs consistent defensive focus', 'Can be screened out of plays'],
+  passing: ['Can miss the extra pass', 'Playmaking can get predictable', 'Needs quicker reads', 'Can lock onto the first option', 'Passing windows can close on them'],
+  iq: ['Can overthink possessions', 'Decision-making can still sharpen', 'Occasionally misses the easy read', 'Needs cleaner situational choices', 'Can get caught between options'],
+  attitude: ['Energy can come and go', 'Needs to stay locked in', 'Can drift when touches slow down', 'Needs steady body language', 'Focus can wobble after mistakes'],
+  clutch: ['Late-game trust is still growing', 'Needs more closing-time proof', 'Can play tight under pressure', 'Big moments can speed them up', 'Needs a go-to late-game answer'],
+  durability: ['Heavy minutes could be a concern', 'Long-term workload needs watching', 'Durability still needs proof', 'Could wear down over a season', 'Availability is worth monitoring'],
+};
+const KRYPTONITE_WEAKNESS = [
+  'Too cute',
+  'Makes it look unfair',
+  'May ruin the other team\'s mood',
+  'Too many highlight requests',
+  'Stat sheet needs more room',
+  'Hard to build a fair matchup',
+  'Gets blamed for broken scoreboards',
+  'Too good for casual runs',
+  'Makes coaches overconfident',
+  'Opponents may request a trade',
+  'Too many signature moves',
+  'Can make teammates spoiled',
+  'Needs a bigger trophy case',
+  'Creates unrealistic expectations',
+  'Makes normal stars look normal',
+  'Too calm while dominating',
+  'Scouts may run out of notes',
+  'May cause defensive meetings',
+  'Too much aura',
+  'Makes the rim look lowered',
+  'Needs tougher competition',
+  'Can break the scouting report',
+  'Too many answers',
+  'May attract double teams in warmups',
+  'Too polished',
+  'Makes clutch time feel early',
+  'Can make the game look easy',
+  'Needs a nerf patch',
+] as const;
 
 const VERDICTS = {
   elite: [
@@ -143,15 +195,25 @@ export function analyzeBuild(r: ScoreResult): BuildAnalysis {
 
   const strengths = subs.filter(s => s.v >= 80).sort((a, b) => b.v - a.v)
     .slice(0, 4).map(s => pickForBuild(STRENGTH[s.key], r, `strength-${s.key}`));
-  const weaknesses = subs.filter(s => s.v <= 45).sort((a, b) => a.v - b.v)
-    .slice(0, 4).map(s => pickForBuild(WEAKNESS[s.key], r, `weakness-${s.key}`));
+  const hardWeaknesses = subs.filter(s => s.v <= 45).sort((a, b) => a.v - b.v);
+  const softWeaknesses = subs
+    .filter(s => s.v > 45)
+    .sort((a, b) => a.v - b.v)
+    .slice(0, Math.max(0, 2 - hardWeaknesses.length));
+  const baseWeaknesses = [
+    ...hardWeaknesses.slice(0, 4).map(s => pickForBuild(WEAKNESS[s.key], r, `weakness-${s.key}`)),
+    ...softWeaknesses.map(s => pickForBuild(SOFT_WEAKNESS[s.key], r, `soft-weakness-${s.key}`)),
+  ].slice(0, 4);
+  const weaknesses = r.overall === 99
+    ? pickTwoForBuild(KRYPTONITE_WEAKNESS, r, 'kryptonite-weakness')
+    : baseWeaknesses;
   if (!strengths.length) strengths.push(pickForBuild(
     ['No clear strength yet.', 'Does the basics well.', 'Plays within a role.'],
     r,
     'no-strength',
   ));
   if (!weaknesses.length) weaknesses.push(pickForBuild(
-    ['No major weakness.', 'No obvious hole.', 'Well-rounded profile.'],
+    ['Needs the right matchup.', 'Still has areas to sharpen.', 'Can be tested by elite players.'],
     r,
     'no-weakness',
   ));

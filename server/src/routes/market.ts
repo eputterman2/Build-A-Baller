@@ -281,7 +281,7 @@ async function fulfillCheckoutSession(session: {
 
 async function ownedBundleIds(userId: string): Promise<string[]> {
   const result = await query<{ bundle_id: string }>(
-    'SELECT bundle_id FROM user_bundles WHERE user_id = $1 ORDER BY purchased_at ASC',
+    'SELECT bundle_id FROM user_bundles WHERE user_id = $1',
     [userId],
   );
   return result.rows.map(row => row.bundle_id);

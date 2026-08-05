@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ARCHETYPE_CHARACTER_RULES, type CollectionBuild, type DrawingCollectionStats,
+  ARCHETYPE_CHARACTER_RULES,
+  type CollectionBuild, type DrawingCollectionStats,
 } from '@shared/index';
 import { useAuth } from '../auth';
 import { api, type MarketDrawingRequest } from '../api';
@@ -80,7 +81,8 @@ export function DrawingCollection() {
         setDrawingStats(stats);
         setCustomRequests(requests);
         const ownedSet = new Set(market.ownedBundleIds);
-        setOwnedMarketDrawingIds(market.bundles
+        const bundleOptions = market.bundles;
+        setOwnedMarketDrawingIds(bundleOptions
           .filter(bundle => ownedSet.has(bundle.id))
           .map(bundle => bundle.drawingId));
       })
@@ -108,25 +110,29 @@ export function DrawingCollection() {
         overallRange: formatOverallRange(request.minOverall, request.maxOverall),
         buildHint: request.buildHint || 'Custom drawing',
       }));
-    const standardDrawings = ARCHETYPE_CHARACTER_RULES.map((drawing, index) => ({
-      id: drawing.id,
-      src: drawing.src,
-      name: drawing.name,
-      number: index + 1,
-      custom: false,
-      collected: (drawingStats?.[drawing.id]?.cards ?? 0) > 0,
-      marketUnlocked: ownedMarketDrawingSet.has(drawing.id),
-      unlocked: (drawingStats?.[drawing.id]?.cards ?? 0) > 0 || ownedMarketDrawingSet.has(drawing.id),
-      collectionStats: drawingStats?.[drawing.id] ?? {
+    const standardDrawings = ARCHETYPE_CHARACTER_RULES.map((drawing, index) => {
+      const stats = drawingStats?.[drawing.id] ?? {
         cards: 0,
         highestOverall: 0,
         playerOfDayWins: 0,
-      },
-      overallRange: formatOverallRange(drawing.minOverall, drawing.maxOverall),
-      buildHint: drawing.minOverall === 99 && drawing.maxOverall === 99
-        ? '?'
-        : DRAWING_BUILD_HINTS[drawing.id] ?? 'A matching all-around build',
-    }));
+      };
+      const marketUnlocked = ownedMarketDrawingSet.has(drawing.id);
+      return {
+        id: drawing.id,
+        src: drawing.src,
+        name: drawing.name,
+        number: index + 1,
+        custom: false,
+        collected: stats.cards > 0,
+        marketUnlocked,
+        unlocked: stats.cards > 0 || marketUnlocked,
+        collectionStats: stats,
+        overallRange: formatOverallRange(drawing.minOverall, drawing.maxOverall),
+        buildHint: drawing.minOverall === 99 && drawing.maxOverall === 99
+          ? '?'
+          : DRAWING_BUILD_HINTS[drawing.id] ?? 'A matching all-around build',
+      };
+    });
     return [...customDrawings, ...standardDrawings];
   }, [customRequests, drawingStats, ownedMarketDrawingIds]);
 
@@ -255,10 +261,9 @@ export function DrawingCollection() {
               aria-label="Close unlock details"
               className="drawing-hint-close"
               onClick={() => setSelectedDrawingId(null)}
-              title="Close"
               type="button"
             >
-              X
+              ×
             </button>
             {selectedDrawing.collected ? (
               <>
@@ -299,14 +304,16 @@ export function DrawingCollection() {
                 <p className="drawing-hint-label">LOCKED DRAWING</p>
                 <h3 id="drawing-hint-title">How to unlock</h3>
                 <dl className="drawing-hint-details">
-                  <div>
-                    <dt>Overall</dt>
-                    <dd>{selectedDrawing.overallRange}</dd>
-                  </div>
-                  <div>
-                    <dt>Build type</dt>
-                    <dd>{selectedDrawing.buildHint}</dd>
-                  </div>
+                  <>
+                    <div>
+                      <dt>Overall</dt>
+                      <dd>{selectedDrawing.overallRange}</dd>
+                    </div>
+                    <div>
+                      <dt>Build type</dt>
+                      <dd>{selectedDrawing.buildHint}</dd>
+                    </div>
+                  </>
                 </dl>
               </>
             )}

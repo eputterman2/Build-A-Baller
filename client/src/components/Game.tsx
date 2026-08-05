@@ -65,6 +65,10 @@ interface FinalBuild {
   characterId: string;
 }
 
+interface GameProps {
+  autoStart?: boolean;
+}
+
 function randomPlayer(excludedIds: Set<string> = new Set()): Player {
   const available = excludedIds.size
     ? SPIN_POOL.filter(player => !excludedIds.has(player.id))
@@ -150,11 +154,12 @@ const tutorialCopy: Record<TutorialStep, { title: string; body: string }> = {
   },
 };
 
-export function Game() {
+export function Game({ autoStart = false }: GameProps) {
   const { user } = useAuth();
   const location = useLocation();
+  const initialNavigationState = location.state as { play?: number } | null;
 
-  const [phase, setPhase] = useState<Phase>('intro');
+  const [phase, setPhase] = useState<Phase>(() => autoStart || initialNavigationState?.play ? 'pick' : 'intro');
   const [group, setGroup] = useState(0);
   const [reels, setReels] = useState<Reel[]>(() => reelsForGroup(0));
   const [assign, setAssign] = useState<Partial<Record<AttributeKey, string>>>({});
@@ -215,7 +220,8 @@ export function Game() {
     api.marketBundles()
       .then(data => {
         if (!alive) return;
-        setOwnedMarketDrawingIds(data.bundles
+        const bundleOptions = data.bundles;
+        setOwnedMarketDrawingIds(bundleOptions
           .filter(bundle => data.ownedBundleIds.includes(bundle.id))
           .map(bundle => bundle.drawingId));
       })
@@ -253,7 +259,7 @@ export function Game() {
   // Logo returns home; Play-style CTAs start a fresh game.
   useEffect(() => {
     const state = location.state as { home?: number; play?: number } | null;
-    if (state?.play) {
+    if (autoStart || state?.play) {
       start();
       return;
     }
@@ -261,7 +267,7 @@ export function Game() {
       clearTimers();
       setPhase('intro');
     }
-  }, [location, clearTimers, start]);
+  }, [autoStart, location, clearTimers, start]);
 
   const closeTutorial = () => setTutorialClosed(true);
   const neverShowTutorial = () => {

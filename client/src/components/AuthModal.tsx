@@ -48,10 +48,14 @@ export function AuthModal({ onClose, intro }: AuthModalProps) {
     setDevResetUrl(null);
   };
 
+  const requestClose = () => {
+    if (!busy) onClose();
+  };
+
   return (
-    <div className="modal-backdrop" onClick={onClose}>
+    <div className="modal-backdrop">
       <div className="modal" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
+        <button className="modal-close" onClick={requestClose} aria-label="Close">×</button>
         <h2>{mode === 'register' ? 'Create an account' : mode === 'forgot' ? 'Reset password' : 'Welcome back'}</h2>
         {intro && <p className="modal-intro">{intro}</p>}
         <form onSubmit={submit}>

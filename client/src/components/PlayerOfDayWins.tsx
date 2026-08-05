@@ -46,7 +46,7 @@ export function PlayerOfDayWins() {
         <p>{totalWins} {totalWins === 1 ? 'win' : 'wins'}</p>
       </div>
       {wins.length === 0 ? (
-        <div className="notice">Your first Player of the Day win is still up for grabs.</div>
+        <div className="notice">Your first Player of the Day win awaits.</div>
       ) : (
         <div className="sports-card-grid">
           {wins.map(win => (

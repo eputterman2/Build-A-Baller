@@ -41,7 +41,8 @@ export function Collection() {
         setBuilds(collection);
         setPlayerOfDayWinCount(winHistory.totalWins);
         const ownedBundles = new Set(market.ownedBundleIds);
-        const ownedBundleDrawings = market.bundles
+        const bundleOptions = market.bundles;
+        const ownedBundleDrawings = bundleOptions
           .filter(bundle => ownedBundles.has(bundle.id))
           .map(bundle => bundle.drawingId);
         const fulfilledCustomDrawings = requests

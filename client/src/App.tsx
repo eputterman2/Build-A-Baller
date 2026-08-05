@@ -20,6 +20,7 @@ export function App() {
       <main className="main">
         <Routes>
           <Route path="/" element={<Game />} />
+          <Route path="/play" element={<Game autoStart />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/collection" element={<Collection />} />
           <Route path="/collection/drawings" element={<DrawingCollection />} />

@@ -32,6 +32,7 @@ export const EMPTY_BUILD_ACCESSORIES: BuildAccessories = {
 };
 
 const MARKET_ASSET_VERSION = 'v=11';
+export const GOLDEN_STATE_BUNDLE_ID = 'golden-state';
 
 export const ACCESSORIES: Accessory[] = [
   {

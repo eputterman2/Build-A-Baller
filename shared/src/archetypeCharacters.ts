@@ -30,7 +30,9 @@ const character = (
 });
 
 const LOWEST = 0;
-const MARKET_DRAWING_IDS = new Set(MARKET_BUNDLES.map(bundle => bundle.drawingId));
+const SPECIAL_UNLOCK_DRAWING_IDS = new Set([
+  ...MARKET_BUNDLES.map(bundle => bundle.drawingId),
+]);
 const LEGACY_EMPTY_BUILD_EXCLUDED_IDS = new Set([
   'c1-left',
   'c1-middle',
@@ -519,7 +521,7 @@ function pickOption(
 function defaultSelectableRules(ownedMarketDrawingIds?: Iterable<string>): ArchetypeCharacterRule[] {
   const owned = new Set(ownedMarketDrawingIds ?? []);
   return ARCHETYPE_CHARACTER_RULES.filter(rule =>
-    !MARKET_DRAWING_IDS.has(rule.id) || owned.has(rule.id));
+    !SPECIAL_UNLOCK_DRAWING_IDS.has(rule.id) || owned.has(rule.id));
 }
 
 function selectArchetypeCharacterFromRules(

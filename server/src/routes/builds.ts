@@ -348,7 +348,7 @@ async function awardPlayerOfDayWinIfCurrentTop(buildId: string): Promise<void> {
        FROM builds b
        WHERE b.created_at >= CURRENT_DATE
          AND b.created_at < CURRENT_DATE + INTERVAL '1 day'
-       ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at ASC
+       ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at ASC
        LIMIT 1
      )
      INSERT INTO player_of_day_wins (id, build_id, user_id, win_date)
@@ -456,13 +456,13 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
       `INSERT INTO builds
          (id, user_id, overall, grade, grade_label, player_name, motto, country,
           user_icon_id, card_frame_id, card_banner_id, character_id,
-          picks, result, total_stats, all_star_count, rank_metrics_version)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+          picks, result, total_stats, hall_of_fame_count, all_star_count, rank_metrics_version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
       [id, req.user!.id, result.overall, grade.g, grade.label,
        identity.playerName, identity.motto, identity.country,
        savedAccessories.userIconId, savedAccessories.cardFrameId, savedAccessories.cardBannerId, characterId,
        JSON.stringify(picks), JSON.stringify(result),
-       rankMetrics.totalStats, rankMetrics.allStarCount, RANK_METRICS_VERSION],
+       rankMetrics.totalStats, rankMetrics.hallOfFameCount, rankMetrics.allStarCount, RANK_METRICS_VERSION],
     );
     await awardPlayerOfDayWinIfCurrentTop(id);
     const originalOwnerDrawing = await isOriginalOwnerDrawing(characterId, req.user!.id);
@@ -498,10 +498,10 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
 	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
                 b.player_name, b.motto, b.country, b.picks, b.result,
                 b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
-                b.total_stats, b.all_star_count,
+                b.total_stats, b.hall_of_fame_count, b.all_star_count,
                 ROW_NUMBER() OVER (
                   PARTITION BY b.user_id
-                  ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at DESC
+                  ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at DESC
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
          WHERE b.overall >= $3
@@ -513,7 +513,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
               ${originalOwnerDrawingSql('ur')}
        FROM user_ranked ur
        WHERE ur.user_place <= $2
-       ORDER BY ur.overall DESC, ur.total_stats DESC, ur.all_star_count DESC, ur.created_at DESC
+       ORDER BY ur.overall DESC, ur.total_stats DESC, ur.hall_of_fame_count DESC, ur.all_star_count DESC, ur.created_at DESC
        LIMIT $1`,
       [limit, GLOBAL_CARDS_PER_USER, minOverall, maxOverall],
     );
@@ -522,7 +522,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
 });
 
 // Best saved build for the current server day. Equal overalls are separated by
-// total adjusted stats, then All-Star picks, then the earliest submission.
+// total adjusted stats, Hall-of-Fame-level picks, All-Star picks, then earliest submission.
 buildsRouter.get('/player-of-day', async (req, res, next) => {
   try {
     const dateResult = await query<{ day: string }>('SELECT CURRENT_DATE::text AS day');
@@ -534,7 +534,7 @@ buildsRouter.get('/player-of-day', async (req, res, next) => {
        FROM builds b JOIN users u ON u.id = b.user_id
        WHERE b.created_at >= CURRENT_DATE
          AND b.created_at < CURRENT_DATE + INTERVAL '1 day'
-       ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at ASC
+       ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at ASC
        LIMIT 1`,
     );
     res.json({
@@ -588,10 +588,10 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
 	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label,
                 b.created_at, b.player_name, b.motto, b.country, b.picks, b.result,
                 b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
-                b.total_stats, b.all_star_count,
+                b.total_stats, b.hall_of_fame_count, b.all_star_count,
                 ROW_NUMBER() OVER (
                   PARTITION BY b.user_id
-                  ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at DESC
+                  ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at DESC
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
        ),
@@ -607,7 +607,7 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
 	                    WHEN overall BETWEEN 76 AND 81 THEN 'silver'
 	                    ELSE 'bronze'
 	                  END
-	                  ORDER BY overall DESC, total_stats DESC, all_star_count DESC, created_at DESC
+	                  ORDER BY overall DESC, total_stats DESC, hall_of_fame_count DESC, all_star_count DESC, created_at DESC
 	                ) AS place
 	         FROM user_ranked
 	         WHERE user_place <= $2
@@ -625,6 +625,7 @@ buildsRouter.get('/collection', requireAuth, async (req, res, next) => {
          CASE WHEN gr.place <= $3 THEN gr.place END ASC,
          ur.overall DESC,
          ur.total_stats DESC,
+         ur.hall_of_fame_count DESC,
          ur.all_star_count DESC,
 	         ur.created_at DESC
 	       LIMIT $4`,
@@ -680,7 +681,6 @@ buildsRouter.get('/drawing-stats', requireAuth, async (req, res, next) => {
       };
       drawingStats.playerOfDayWins += 1;
     }
-
     res.json({ stats });
   } catch (err) { next(err); }
 });

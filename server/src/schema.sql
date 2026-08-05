@@ -35,6 +35,7 @@ CREATE TABLE IF NOT EXISTS builds (
   picks       JSONB NOT NULL,
   result      JSONB NOT NULL,
   total_stats INTEGER NOT NULL DEFAULT 0,
+  hall_of_fame_count INTEGER NOT NULL DEFAULT 0,
   all_star_count INTEGER NOT NULL DEFAULT 0,
   rank_metrics_version INTEGER NOT NULL DEFAULT 0,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -44,6 +45,7 @@ ALTER TABLE builds ADD COLUMN IF NOT EXISTS player_name TEXT NOT NULL DEFAULT ''
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS motto TEXT NOT NULL DEFAULT '';
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS country TEXT NOT NULL DEFAULT '';
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS total_stats INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE builds ADD COLUMN IF NOT EXISTS hall_of_fame_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS all_star_count INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS rank_metrics_version INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE builds ADD COLUMN IF NOT EXISTS user_icon_id TEXT NOT NULL DEFAULT '';
@@ -131,7 +133,7 @@ ALTER TABLE market_drawing_requests ADD COLUMN IF NOT EXISTS fulfilled_at TIMEST
 
 CREATE INDEX IF NOT EXISTS builds_overall_idx ON builds (overall DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS builds_rank_idx
-  ON builds (overall DESC, total_stats DESC, all_star_count DESC, created_at DESC);
+  ON builds (overall DESC, total_stats DESC, hall_of_fame_count DESC, all_star_count DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS builds_user_idx ON builds (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS user_bundles_user_idx ON user_bundles (user_id);
 CREATE INDEX IF NOT EXISTS player_of_day_wins_user_idx ON player_of_day_wins (user_id, created_at DESC);
@@ -194,7 +196,7 @@ BEGIN
       SELECT b.id, b.user_id, b.created_at::date AS win_date, b.created_at,
              ROW_NUMBER() OVER (
                PARTITION BY b.created_at::date
-               ORDER BY b.overall DESC, b.total_stats DESC, b.all_star_count DESC, b.created_at ASC
+               ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at ASC
              ) AS day_place
       FROM builds b
     ) daily_winners

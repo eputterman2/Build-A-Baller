@@ -51,7 +51,8 @@ export function SportsCard({
   const [artSrc, setArtSrc] = useState(character.src);
   const analysis = analyzeBuild(build.result);
   const topStrengths = analysis.strengths.slice(0, 2);
-  const topWeakness = analysis.weaknesses[0];
+  const summaryWeaknesses = analysis.weaknesses.slice(0, 2);
+  const topWeaknesses = summaryWeaknesses.length ? summaryWeaknesses : ['Still has areas to sharpen.'];
   const identity = build.identity;
   const cardName = identity?.playerName || archetype;
   const countryFlag = flagForCountry(identity?.country);
@@ -110,7 +111,7 @@ export function SportsCard({
         aria-label={flipped ? 'Show card front' : 'Show card back'}
       >
         <div className="sports-card-inner">
-          <div className={`sports-card-face sports-card-front${cardFrame ? ' has-card-frame' : ''}${cardBanner ? ' has-card-banner' : ''}`}>
+          <div className={`sports-card-face sports-card-front${cardFrame ? ` has-card-frame card-frame-${cardFrame.id}` : ''}${cardBanner ? ' has-card-banner' : ''}`}>
             {cardBanner && <img className="card-banner-art" src={cardBanner.src} alt="" />}
             <div className="card-overall">
               <span>{build.overall}</span>
@@ -178,9 +179,9 @@ export function SportsCard({
                   </ul>
                 </div>
                 <div>
-                  <h4>Weakness</h4>
+                  <h4>Weaknesses</h4>
                   <ul>
-                    <li>{topWeakness}</li>
+                    {topWeaknesses.map((w, i) => <li key={i}>{w}</li>)}
                   </ul>
                 </div>
               </div>

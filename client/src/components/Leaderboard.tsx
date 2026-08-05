@@ -172,6 +172,15 @@ export function Leaderboard() {
   return (
     <div className="leaderboard">
       <h2 className="results-title">Global Leaderboard</h2>
+      <div className="leaderboard-rank-note">
+        <p>Ranked within each tier by:</p>
+        <ol>
+          <li>Overall</li>
+          <li>Total stats</li>
+          <li>Hall of Famers drafted</li>
+          <li>All-Stars drafted</li>
+        </ol>
+      </div>
       <div className={`global-leaderboard-results${globalBoardBusy ? ' is-loading' : ''}`} aria-busy={globalLoading}>
         {builds.length === 0 ? (
           <div className="notice">No {selectedTierDetails.label} builds yet.</div>

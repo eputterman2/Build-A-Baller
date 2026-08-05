@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   EMPTY_BUILD_ACCESSORIES,
+  resolveArchetypeCharacter,
   type Accessory, type AccessoryType, type BuildAccessories, type CollectionBuild,
 } from '@shared/index';
 import { api } from '../api';
@@ -19,6 +20,17 @@ const ACCESSORY_KEYS: Record<AccessoryType, keyof BuildAccessories> = {
   cardBanner: 'cardBannerId',
 };
 
+function AccessoryArt({ accessory }: { accessory: Accessory }) {
+  if (accessory.type === 'cardFrame') {
+    return (
+      <span className="frame-preview" aria-hidden="true">
+        <span className={`frame-preview-card sports-card-front has-card-frame card-frame-${accessory.id}`} />
+      </span>
+    );
+  }
+  return <img src={accessory.src} alt="" />;
+}
+
 export function Accessories() {
   const { user, loading: authLoading } = useAuth();
   const [showAuth, setShowAuth] = useState(false);
@@ -29,7 +41,7 @@ export function Accessories() {
   const [selectedBuildId, setSelectedBuildId] = useState('');
   const [applying, setApplying] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
+  const [equippedUserIconId, setEquippedUserIconId] = useState(user?.userIconId ?? '');
 
   const load = () => {
     if (!user) return;
@@ -45,6 +57,10 @@ export function Accessories() {
 
   useEffect(load, [user]);
 
+  useEffect(() => {
+    setEquippedUserIconId(user?.userIconId ?? '');
+  }, [user?.userIconId]);
+
   const groupedAccessories = useMemo(() => {
     const groups: Record<AccessoryType, Accessory[]> = {
       userIcon: [],
@@ -55,10 +71,18 @@ export function Accessories() {
     return groups;
   }, [accessories]);
 
+  const buildAccessoryStatus = (build: CollectionBuild, accessory: Accessory) => {
+    const key = ACCESSORY_KEYS[accessory.type];
+    const inUse = build.accessories?.[key] === accessory.id;
+    return {
+      label: inUse ? 'In use' : 'Not used',
+      className: inUse ? 'is-used' : 'is-unused',
+    };
+  };
+
   const openAccessory = (accessory: Accessory) => {
     setSelectedAccessory(accessory);
     setSelectedBuildId(builds[0]?.id ?? '');
-    setMessage(null);
     setError(null);
   };
 
@@ -68,7 +92,6 @@ export function Accessories() {
     if (!build) return;
     setApplying(true);
     setError(null);
-    setMessage(null);
     try {
       const key = ACCESSORY_KEYS[selectedAccessory.type];
       const updated = await api.updateBuildAccessories(build.id, {
@@ -79,8 +102,6 @@ export function Accessories() {
       setBuilds(current => current.map(item => (
         item.id === build.id ? { ...item, accessories: updated } : item
       )));
-      setMessage(`${selectedAccessory.name} equipped.`);
-      setSelectedAccessory(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -94,7 +115,6 @@ export function Accessories() {
     if (!build) return;
     setApplying(true);
     setError(null);
-    setMessage(null);
     try {
       const key = ACCESSORY_KEYS[selectedAccessory.type];
       const updated = await api.updateBuildAccessories(build.id, {
@@ -105,8 +125,6 @@ export function Accessories() {
       setBuilds(current => current.map(item => (
         item.id === build.id ? { ...item, accessories: updated } : item
       )));
-      setMessage(`${selectedAccessory.name} removed.`);
-      setSelectedAccessory(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -118,14 +136,12 @@ export function Accessories() {
     if (!selectedAccessory || selectedAccessory.type !== 'userIcon') return;
     setApplying(true);
     setError(null);
-    setMessage(null);
     try {
       const userIconId = await api.updateUsernameIcon(selectedAccessory.id);
+      setEquippedUserIconId(userIconId);
       setBuilds(current => current.map(item => (
         { ...item, accessories: { ...EMPTY_BUILD_ACCESSORIES, ...item.accessories, userIconId } }
       )));
-      setMessage(`${selectedAccessory.name} applied to your username.`);
-      setSelectedAccessory(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -137,14 +153,12 @@ export function Accessories() {
     if (!selectedAccessory || selectedAccessory.type !== 'userIcon') return;
     setApplying(true);
     setError(null);
-    setMessage(null);
     try {
       const userIconId = await api.updateUsernameIcon('');
+      setEquippedUserIconId(userIconId);
       setBuilds(current => current.map(item => (
         { ...item, accessories: { ...EMPTY_BUILD_ACCESSORIES, ...item.accessories, userIconId } }
       )));
-      setMessage('Username icon removed.');
-      setSelectedAccessory(null);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -170,6 +184,13 @@ export function Accessories() {
     );
   }
 
+  const selectedUserIconStatus = selectedAccessory?.type === 'userIcon' && ownedAccessoryIds.has(selectedAccessory.id)
+    ? {
+      label: equippedUserIconId === selectedAccessory.id ? 'in use' : 'not used',
+      className: equippedUserIconId === selectedAccessory.id ? 'is-used' : 'is-unused',
+    }
+    : null;
+
   return (
     <div className="accessories-page">
       <div className="collection-subpage-head">
@@ -178,7 +199,6 @@ export function Accessories() {
       </div>
 
       {error && <div className="notice error">{error}</div>}
-      {message && <div className="notice success">{message}</div>}
 
       <section className="accessory-library">
         {(Object.keys(TYPE_LABELS) as AccessoryType[]).map(type => (
@@ -194,7 +214,7 @@ export function Accessories() {
                     type="button"
                     onClick={() => openAccessory(accessory)}
                   >
-                    <img src={accessory.src} alt="" />
+                    <AccessoryArt accessory={accessory} />
                     <span>{accessory.name}</span>
                   </button>
                 );
@@ -209,9 +229,17 @@ export function Accessories() {
           <div className="modal accessory-modal" onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setSelectedAccessory(null)} aria-label="Close">×</button>
             <div className={`accessory-modal-preview accessory-modal-preview-${selectedAccessory.type}`}>
-              <img src={selectedAccessory.src} alt="" />
+              <AccessoryArt accessory={selectedAccessory} />
             </div>
-            <h2>{selectedAccessory.name}</h2>
+            <div className="accessory-modal-title-row">
+              <h2>{selectedAccessory.name}</h2>
+              {selectedUserIconStatus && (
+                <small className={`accessory-build-status accessory-modal-status ${selectedUserIconStatus.className}`}>
+                  <i aria-hidden="true" />
+                  {selectedUserIconStatus.label}
+                </small>
+              )}
+            </div>
             {!ownedAccessoryIds.has(selectedAccessory.id) ? (
               <p className="modal-intro">Unlock this item in the market before equipping it.</p>
             ) : selectedAccessory.type === 'userIcon' ? (
@@ -236,16 +264,36 @@ export function Accessories() {
               <p className="modal-intro">Save a card before equipping this item.</p>
             ) : (
               <>
-                <label>
-                  Choose Card
-                  <select value={selectedBuildId} onChange={e => setSelectedBuildId(e.target.value)}>
-                    {builds.map(build => (
-                      <option key={build.id} value={build.id}>
-                        {build.overall} OVR {build.identity?.playerName || build.gradeLabel}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="drawing-picker compact accessory-build-picker">
+                  <div className="drawing-picker-head">
+                    <h3>Choose Card</h3>
+                    <p>Pick which saved card should use this item.</p>
+                  </div>
+                  <div className="drawing-picker-grid">
+                    {builds.map(build => {
+                      const character = resolveArchetypeCharacter(build.result, build.picks, build.characterId);
+                      const selected = build.id === selectedBuildId;
+                      const status = buildAccessoryStatus(build, selectedAccessory);
+                      return (
+                        <button
+                          className={`drawing-picker-option accessory-build-option${selected ? ' selected' : ''}`}
+                          key={build.id}
+                          onClick={() => setSelectedBuildId(build.id)}
+                          type="button"
+                        >
+                          <img src={character.src} alt="" />
+                          <span>
+                            <b>{character.name}</b>
+                            <small className={`accessory-build-status ${status.className}`}>
+                              <i aria-hidden="true" />
+                              {status.label}
+                            </small>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <button
                   className="btn btn-primary"
                   disabled={applying || !selectedBuildId}
