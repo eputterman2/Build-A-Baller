@@ -40,6 +40,7 @@ function Bar({ label, value, color, unit = '' }:
 export function Results({ overall, result, picks, selectedCharacterId, onCharacterChange }: ResultsProps) {
   const { user } = useAuth();
   const canSwapDrawing = typeof onCharacterChange === 'function';
+  const [expandedAnalysisArt, setExpandedAnalysisArt] = useState(false);
   const grade = gradeFor(overall);
   const analysis = analyzeBuild(result);
   const defaultCharacter = useMemo(() => selectArchetypeCharacter(result, picks), [result, picks]);
@@ -179,11 +180,32 @@ export function Results({ overall, result, picks, selectedCharacterId, onCharact
               </ul>
             </div>
           </div>
-          <div className="archetype-art">
+          <button
+            aria-label={`Expand ${character.name} drawing`}
+            className="archetype-art"
+            onClick={() => setExpandedAnalysisArt(true)}
+            type="button"
+          >
             <img src={character.src} alt={`${character.name} character`} />
-          </div>
+          </button>
         </div>
       </div>
+
+      {expandedAnalysisArt && (
+        <div className="modal-backdrop analysis-art-backdrop" onClick={() => setExpandedAnalysisArt(false)} role="presentation">
+          <div
+            aria-label={`${character.name} drawing preview`}
+            aria-modal="true"
+            className="modal analysis-art-modal"
+            onClick={event => event.stopPropagation()}
+            role="dialog"
+          >
+            <div className="analysis-art-expanded-card">
+              <img src={character.src} alt={`${character.name} character`} />
+            </div>
+          </div>
+        </div>
+      )}
 
       {canSwapDrawing && (
         <div className="panel">

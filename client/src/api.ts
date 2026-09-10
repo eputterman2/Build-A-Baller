@@ -1,6 +1,6 @@
 import type {
-  Accessory, AuthUser, BuildAccessories, BuildDetail, BuildSummary, CollectionBuild, DrawingCollectionStats,
-  DrawingCollectionLeader, DrawingOption, MarketBundle, PickMap, Player, PlayerDrawingPoll, PlayerIdentity, PlayerOfDay, PlayerOfDayLeader, PlayerOfDayWin,
+  Accessory, AdminDrawingPrizeCompletion, AuthUser, BuildAccessories, BuildDetail, BuildSummary, CollectionBuild, ContestState, DrawingCollectionStats,
+  AdminPlayerDrawingPoll, DrawingCollectionLeader, DrawingOption, MarketBundle, PickMap, Player, PlayerDrawingPoll, PlayerIdentity, PlayerOfDay, PlayerOfDayLeader, PlayerOfDayWin,
 } from '@shared/index';
 
 const TOKEN_KEY = 'baller_token';
@@ -32,7 +32,26 @@ async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
 
 interface AuthResponse { token: string; user: AuthUser; }
 interface ForgotPasswordResponse { ok: true; message: string; resetUrl?: string; }
-interface MarketBundlesResponse { bundles: MarketBundle[]; ownedBundleIds: string[]; }
+interface DailyLoginRewardStatus {
+  currentStreak: number;
+  requiredDays: number;
+  checkedDays: boolean[];
+  complete: boolean;
+}
+interface BuildPrizeProgress {
+  bestOverall: number | null;
+  worstOverall: number | null;
+}
+interface MarketBundlesResponse {
+  bundles: MarketBundle[];
+  rewardBundles?: MarketBundle[];
+  ownedBundleIds: string[];
+  dailyLoginReward?: DailyLoginRewardStatus | null;
+  prizeProgress?: BuildPrizeProgress | null;
+  rewardDrawingIds?: string[];
+  repeatableRandomDrawingTestAccount?: boolean;
+  availableDrawingCount?: number;
+}
 interface AccessoriesResponse { accessories: Accessory[]; ownedBundleIds: string[]; ownedAccessoryIds: string[]; }
 interface MarketDrawingRequestInput {
   type: 'pro-player' | 'photo-player';
@@ -63,6 +82,13 @@ export interface MarketDrawingRequest {
   fulfilledAt?: string | null;
   createdAt: string;
 }
+export interface RecentPlayerDrawing {
+  id: string;
+  name: string;
+  src: string;
+  obtainText: string;
+  addedAt: string | null;
+}
 interface AdminDrawingFulfillment {
   finalName: string;
   finalDrawingDataUrl: string;
@@ -72,8 +98,31 @@ interface AdminDrawingFulfillment {
   buildHint?: string;
   adminNote?: string;
 }
+interface AdminDrawingSubmit {
+  finalName: string;
+  finalDrawingDataUrl?: string;
+  minOverall: number;
+  maxOverall: number;
+  buildHint?: string;
+}
 interface CheckoutResponse {
   checkoutUrl?: string;
+}
+export interface AdminAnalytics {
+  visitors: {
+    day: { total: number; returning: number };
+    week: { total: number; returning: number };
+    month: { total: number; returning: number };
+  };
+  totalAccounts: number;
+  issues: Array<{
+    type: string;
+    message: string;
+    path: string;
+    occurrences: number;
+    lastSeenAt: string;
+  }>;
+  issuesWindow: string;
 }
 
 function adminHeaders(secret: string): HeadersInit {
@@ -116,6 +165,36 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ optionId, voterId }),
     }),
+  adminPlayerDrawingPoll: (secret: string) =>
+    req<{ poll: AdminPlayerDrawingPoll }>('/polls/admin/current', {
+      headers: adminHeaders(secret),
+      cache: 'no-store',
+    }).then(d => d.poll),
+  adminUpdatePlayerDrawingPoll: (secret: string, options: string[], resetVotes = false) =>
+    req<{ poll: AdminPlayerDrawingPoll }>('/polls/admin/current', {
+      method: 'PATCH',
+      headers: adminHeaders(secret),
+      body: JSON.stringify({ options, resetVotes }),
+    }).then(d => d.poll),
+  contest: (viewerId: string) =>
+    req<ContestState>('/contest?viewerId=' + encodeURIComponent(viewerId), { cache: 'no-store' }),
+  submitContestEntry: (drawingDataUrl: string) =>
+    req<ContestState>('/contest/entry', {
+      method: 'POST',
+      body: JSON.stringify({ drawingDataUrl }),
+    }),
+  deleteContestEntry: () =>
+    req<ContestState>('/contest/entry', { method: 'DELETE' }),
+  voteContestEntry: (entryId: string) =>
+    req<ContestState>('/contest/vote', {
+      method: 'POST',
+      body: JSON.stringify({ entryId }),
+    }),
+  recordContestImpressions: (entryIds: string[], viewerId: string) =>
+    req<{ ok: true }>('/contest/impressions', {
+      method: 'POST',
+      body: JSON.stringify({ entryIds, viewerId }),
+    }).then(d => d.ok),
   submitFeedback: (message: string) =>
     req<{ ok: true }>('/feedback', {
       method: 'POST',
@@ -154,6 +233,22 @@ export const api = {
       body: JSON.stringify({ characterId }),
     }),
   marketBundles: () => req<MarketBundlesResponse>('/market/bundles', { cache: 'no-store' }),
+  trackSiteVisit: (visitorId: string, path: string) =>
+    req<{ ok: true }>('/analytics/visit', {
+      method: 'POST',
+      body: JSON.stringify({ visitorId, path }),
+    }),
+  reportSiteIssue: (issue: { visitorId?: string; type: 'error' | 'unhandled-rejection'; message: string; path: string }) =>
+    req<{ ok: true }>('/analytics/issue', {
+      method: 'POST',
+      body: JSON.stringify(issue),
+    }),
+  adminAnalytics: (secret: string) =>
+    req<AdminAnalytics>('/analytics/admin', {
+      headers: adminHeaders(secret),
+      cache: 'no-store',
+    }),
+  claimHighOverallDrawing: () => req<{ drawing: { id: string; name: string; src: string } }>('/market/prizes/high-overall-drawing/claim', { method: 'POST' }),
   purchaseBundle: (id: string) =>
     req<{ bundle: MarketBundle; ownedBundleIds: string[] } & CheckoutResponse>('/market/bundles/' + id + '/purchase', { method: 'POST' }),
   submitDrawingRequest: (request: MarketDrawingRequestInput) =>
@@ -163,12 +258,39 @@ export const api = {
     }),
   drawingRequests: () =>
     req<{ requests: MarketDrawingRequest[] }>('/market/drawing-requests', { cache: 'no-store' }).then(d => d.requests),
+  recentPlayerDrawings: () =>
+    req<{ drawings: RecentPlayerDrawing[] }>('/market/drawings/recent', { cache: 'no-store' }).then(d => d.drawings),
   deleteDrawingRequest: (id: string) =>
     req<{ ok: true }>('/market/drawing-requests/' + id, { method: 'DELETE' }).then(d => d.ok),
   adminDrawingRequests: (secret: string) =>
     req<{ requests: MarketDrawingRequest[] }>('/market/admin/drawing-requests', {
       headers: adminHeaders(secret),
     }).then(d => d.requests),
+  adminDrawingPrizeCompletions: (secret: string) =>
+    req<{ completions: AdminDrawingPrizeCompletion[] }>('/market/admin/drawing-prize-completions', {
+      headers: adminHeaders(secret),
+    }).then(d => d.completions),
+  adminPublishedDrawings: (secret: string) =>
+    req<{ drawings: MarketDrawingRequest[] }>('/market/admin/drawings', {
+      headers: adminHeaders(secret),
+    }).then(d => d.drawings),
+  adminCreateDrawing: (secret: string, drawing: AdminDrawingSubmit) =>
+    req<{ drawing: MarketDrawingRequest }>('/market/admin/drawings', {
+      method: 'POST',
+      headers: adminHeaders(secret),
+      body: JSON.stringify(drawing),
+    }).then(d => d.drawing),
+  adminUpdateDrawing: (secret: string, id: string, drawing: AdminDrawingSubmit) =>
+    req<{ drawing: MarketDrawingRequest }>('/market/admin/drawings/' + id, {
+      method: 'PATCH',
+      headers: adminHeaders(secret),
+      body: JSON.stringify(drawing),
+    }).then(d => d.drawing),
+  adminRemoveDrawing: (secret: string, id: string) =>
+    req<{ ok: true }>('/market/admin/drawings/' + id, {
+      method: 'DELETE',
+      headers: adminHeaders(secret),
+    }).then(d => d.ok),
   adminUpdateDrawingRequestStatus: (secret: string, id: string, status: string, adminNote: string) =>
     req<{ request: MarketDrawingRequest }>('/market/admin/drawing-requests/' + id + '/status', {
       method: 'PATCH',

@@ -105,7 +105,6 @@ export function SaveIdentityModal({
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal identity-modal" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={onClose} aria-label="Close">×</button>
         <h2>{title}</h2>
         {intro && <p className="modal-intro">{intro}</p>}
         <form onSubmit={submit}>

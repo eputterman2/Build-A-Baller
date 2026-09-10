@@ -26,7 +26,7 @@ export function Nav() {
         <Link to="/play" className={pathname === '/play' ? 'active' : ''} onClick={goPlay}>Play</Link>
         <Link to="/leaderboard" className={pathname === '/leaderboard' ? 'active' : ''}>Leaderboard</Link>
         <Link to="/collection" className={pathname === '/collection' ? 'active' : ''}>Collection</Link>
-        <Link to="/market" className={pathname === '/market' ? 'active' : ''}>Market</Link>
+        <Link to="/prizes" className={pathname === '/prizes' || pathname === '/market' ? 'active' : ''}>Prizes</Link>
       </nav>
       <div className="nav-auth">
         {user ? (

@@ -12,6 +12,8 @@ import { pollsRouter } from './routes/polls';
 import { feedbackRouter } from './routes/feedback';
 import { flagsRouter } from './routes/flags';
 import { marketRouter, stripeWebhookHandler } from './routes/market';
+import { contestRouter } from './routes/contest';
+import { analyticsRouter } from './routes/analytics';
 import { backfillBuildRankMetrics } from './rankings';
 
 async function main(): Promise<void> {
@@ -45,6 +47,8 @@ async function main(): Promise<void> {
   app.use('/api/polls', pollsRouter);
   app.use('/api/feedback', feedbackRouter);
   app.use('/api/market', marketRouter);
+  app.use('/api/contest', contestRouter);
+  app.use('/api/analytics', analyticsRouter);
   app.use('/api/flags', flagsRouter);
 
   // In production, serve the built React app and let it handle client routing.

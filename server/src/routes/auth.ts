@@ -5,6 +5,7 @@ import {
 } from '../auth';
 import { hasDisallowedPublicContent } from '../moderation';
 import { config } from '../env';
+import { recordDailyLogin } from '../rewardBundles';
 
 export const authRouter = Router();
 
@@ -71,6 +72,7 @@ authRouter.post('/register', async (req, res, next) => {
   try {
     const { username, email, password } = registerSchema.parse(req.body);
     const user = await registerUser(username, email, password);
+    await recordDailyLogin(user.id);
     res.status(201).json({ token: signToken(user), user });
   } catch (err) { next(err); }
 });
@@ -79,6 +81,7 @@ authRouter.post('/login', async (req, res, next) => {
   try {
     const { email, password } = loginSchema.parse(req.body);
     const user = await loginUser(email, password);
+    await recordDailyLogin(user.id);
     res.json({ token: signToken(user), user });
   } catch (err) { next(err); }
 });
@@ -111,6 +114,9 @@ authRouter.post('/reset-password', async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-authRouter.get('/me', requireAuth, (req, res) => {
-  res.json({ user: req.user });
+authRouter.get('/me', requireAuth, async (req, res, next) => {
+  try {
+    await recordDailyLogin(req.user!.id);
+    res.json({ user: req.user });
+  } catch (err) { next(err); }
 });

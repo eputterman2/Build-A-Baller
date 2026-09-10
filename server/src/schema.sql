@@ -71,6 +71,21 @@ CREATE TABLE IF NOT EXISTS user_bundles (
   PRIMARY KEY (user_id, bundle_id)
 );
 
+CREATE TABLE IF NOT EXISTS user_reward_bundles (
+  user_id   TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  bundle_id TEXT NOT NULL,
+  reason    TEXT NOT NULL DEFAULT '',
+  earned_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, bundle_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_daily_logins (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  login_date DATE NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (user_id, login_date)
+);
+
 CREATE TABLE IF NOT EXISTS player_of_day_wins (
   id         TEXT PRIMARY KEY,
   build_id   TEXT UNIQUE NOT NULL REFERENCES builds(id) ON DELETE CASCADE,
@@ -87,6 +102,54 @@ CREATE TABLE IF NOT EXISTS poll_votes (
   PRIMARY KEY (poll_id, voter_key)
 );
 
+CREATE TABLE IF NOT EXISTS player_drawing_poll_options (
+  poll_id    TEXT NOT NULL,
+  slot       INTEGER NOT NULL,
+  option_id  TEXT NOT NULL,
+  label      TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (poll_id, slot),
+  UNIQUE (poll_id, option_id)
+);
+
+CREATE TABLE IF NOT EXISTS contest_entries (
+  id               TEXT PRIMARY KEY,
+  user_id          TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  drawing_data_url TEXT NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS contest_entry_examples (
+  id               TEXT PRIMARY KEY,
+  user_id          TEXT UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  drawing_data_url TEXT NOT NULL,
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at       TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+INSERT INTO contest_entry_examples (id, user_id, drawing_data_url, created_at, updated_at)
+SELECT id, user_id, drawing_data_url, created_at, updated_at
+FROM contest_entries
+ON CONFLICT (user_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS contest_votes (
+  id            TEXT PRIMARY KEY,
+  entry_id      TEXT NOT NULL REFERENCES contest_entries(id) ON DELETE CASCADE,
+  voter_user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  week_start    DATE NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (entry_id, voter_user_id, week_start)
+);
+
+CREATE TABLE IF NOT EXISTS contest_entry_impressions (
+  entry_id   TEXT NOT NULL REFERENCES contest_entries(id) ON DELETE CASCADE,
+  viewer_key TEXT NOT NULL,
+  count      INTEGER NOT NULL DEFAULT 1,
+  shown_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (entry_id, viewer_key)
+);
+
 CREATE TABLE IF NOT EXISTS feedback_messages (
   id           TEXT PRIMARY KEY,
   user_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
@@ -94,6 +157,25 @@ CREATE TABLE IF NOT EXISTS feedback_messages (
   message      TEXT NOT NULL,
   word_count   INTEGER NOT NULL,
   email_status TEXT NOT NULL DEFAULT 'pending',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS site_visit_days (
+  visitor_id   TEXT NOT NULL,
+  visit_date   DATE NOT NULL,
+  user_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+  last_path    TEXT NOT NULL DEFAULT '/',
+  last_seen_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  PRIMARY KEY (visitor_id, visit_date)
+);
+
+CREATE TABLE IF NOT EXISTS site_issue_events (
+  id           BIGSERIAL PRIMARY KEY,
+  visitor_id   TEXT,
+  user_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
+  issue_type   TEXT NOT NULL,
+  message      TEXT NOT NULL,
+  path         TEXT NOT NULL DEFAULT '/',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -136,10 +218,21 @@ CREATE INDEX IF NOT EXISTS builds_rank_idx
   ON builds (overall DESC, total_stats DESC, hall_of_fame_count DESC, all_star_count DESC, created_at DESC);
 CREATE INDEX IF NOT EXISTS builds_user_idx ON builds (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS user_bundles_user_idx ON user_bundles (user_id);
+CREATE INDEX IF NOT EXISTS user_reward_bundles_user_idx ON user_reward_bundles (user_id);
+CREATE INDEX IF NOT EXISTS user_daily_logins_user_idx ON user_daily_logins (user_id, login_date DESC);
 CREATE INDEX IF NOT EXISTS player_of_day_wins_user_idx ON player_of_day_wins (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS player_of_day_wins_leader_idx ON player_of_day_wins (user_id, win_date);
 CREATE INDEX IF NOT EXISTS poll_votes_poll_idx ON poll_votes (poll_id, option_id);
+CREATE INDEX IF NOT EXISTS player_drawing_poll_options_poll_idx
+  ON player_drawing_poll_options (poll_id, slot);
+CREATE INDEX IF NOT EXISTS contest_entries_created_idx ON contest_entries (created_at DESC);
+CREATE INDEX IF NOT EXISTS contest_entry_examples_updated_idx ON contest_entry_examples (updated_at DESC);
+CREATE INDEX IF NOT EXISTS contest_votes_week_idx ON contest_votes (week_start, entry_id);
+CREATE INDEX IF NOT EXISTS contest_votes_voter_week_idx ON contest_votes (voter_user_id, week_start);
+CREATE INDEX IF NOT EXISTS contest_entry_impressions_entry_idx ON contest_entry_impressions (entry_id);
 CREATE INDEX IF NOT EXISTS feedback_messages_created_idx ON feedback_messages (created_at DESC);
+CREATE INDEX IF NOT EXISTS site_visit_days_date_idx ON site_visit_days (visit_date DESC, visitor_id);
+CREATE INDEX IF NOT EXISTS site_issue_events_created_idx ON site_issue_events (created_at DESC);
 CREATE INDEX IF NOT EXISTS market_drawing_requests_user_idx
   ON market_drawing_requests (user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS market_drawing_requests_status_idx

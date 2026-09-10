@@ -158,6 +158,15 @@ export interface DrawingCollectionLeader {
   drawings: number;
 }
 
+export interface AdminDrawingPrizeCompletion {
+  userId: string;
+  username: string;
+  email: string | null;
+  collectedDrawings: number;
+  availableDrawings: number;
+  completedAt: string | null;
+}
+
 export interface DrawingOption {
   id: string;
   name: string;
@@ -181,6 +190,34 @@ export interface PlayerDrawingPoll {
   options: PollOptionResult[];
   totalVotes: number;
   viewerVoteOptionId: string | null;
+}
+
+export interface AdminPlayerDrawingPoll {
+  id: string;
+  question: string;
+  options: PollOptionResult[];
+  totalVotes: number;
+}
+
+export interface ContestEntry {
+  id: string;
+  title: string;
+  artist: string;
+  votes: number;
+  src: string | null;
+  submittedAt: string | null;
+  rank: number | null;
+  isOwnEntry: boolean;
+  viewerHasVoted: boolean;
+}
+
+export interface ContestState {
+  weeklyVotesLimit: number;
+  weeklyVotesLeft: number;
+  myEntry: ContestEntry | null;
+  exampleEntries: ContestEntry[];
+  popularEntries: ContestEntry[];
+  allSubmissionEntries: ContestEntry[];
 }
 
 export interface AuthUser {

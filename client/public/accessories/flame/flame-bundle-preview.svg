@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 340" role="img" aria-label="Flame Bundle preview">
+  <rect x="8" y="8" width="704" height="324" rx="20" fill="#fffdf7" stroke="#17181d" stroke-width="8"/>
+  <text x="360" y="62" fill="#ef3b31" font-family="Comic Sans MS, Chalkboard SE, sans-serif" font-size="42" text-anchor="middle">Flame Bundle</text>
+  <text x="360" y="96" fill="#707783" font-family="Comic Sans MS, Chalkboard SE, sans-serif" font-size="22" text-anchor="middle">#1 tier reward</text>
+  <g transform="translate(92 120)">
+    <rect x="0" y="0" width="196" height="150" rx="18" fill="#fffdf7" stroke="#17181d" stroke-width="6"/>
+    <circle cx="98" cy="72" r="42" fill="#ff7a1a" stroke="#17181d" stroke-width="5"/>
+    <path d="M106 28c14 13 18 28 9 47-7 15-23 29-42 39 26 3 52-3 70-20 20-20 22-47 6-68-12-16-31-22-43-24z" fill="#c92b19" stroke="#17181d" stroke-width="4"/>
+    <path d="M124 12c-4 22 18 27 11 53-10-16-33-12-28-40-20 14-24 34-17 51-19-17-23-37-10-60-28 15-45 38-43 67" fill="#ffd833" stroke="#17181d" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M66 50c29 14 49 34 67 66M55 82c30-2 61 2 91 14M102 30c2 28 0 56-6 84" fill="none" stroke="#17181d" stroke-width="4" stroke-linecap="round"/>
+    <text x="98" y="136" fill="#707783" font-family="Comic Sans MS, Chalkboard SE, sans-serif" font-size="18" text-anchor="middle">Flame Icon</text>
+  </g>
+  <g transform="translate(430 116)">
+    <rect x="0" y="0" width="196" height="154" rx="18" fill="#fffdf7" stroke="#17181d" stroke-width="6"/>
+    <path d="M105 19c22 6 40 25 42 51 2 30-12 54-39 67-12 6-30 4-42-4 24-4 35-18 34-37-1-14-10-24-22-30 23 0 33-13 27-47z" fill="#ff8a18" stroke="#17181d" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M91 24c-21 14-33 35-31 58 2 24 18 41 39 47-8-15-5-28 8-38 9-7 13-18 7-31-4 9-13 14-24 14 11-16 11-32 1-50z" fill="#ffd833" stroke="#17181d" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="92" cy="80" r="23" fill="#ffb12c" stroke="#17181d" stroke-width="4"/>
+    <text x="98" y="136" fill="#707783" font-family="Comic Sans MS, Chalkboard SE, sans-serif" font-size="18" text-anchor="middle">Fuego Curry</text>
+  </g>
+</svg>

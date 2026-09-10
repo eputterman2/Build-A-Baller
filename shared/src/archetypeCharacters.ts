@@ -1,5 +1,5 @@
 import { archetypeFamily, buildArchetype } from './analysis';
-import { MARKET_BUNDLES } from './accessories';
+import { ALL_BUNDLES, CHRISTMAS_BUNDLE_DRAWING_ID, FLAME_BUNDLE_DRAWING_ID } from './accessories';
 import type { PickMap, ScoreResult } from './types';
 
 export interface ArchetypeCharacter {
@@ -30,8 +30,10 @@ const character = (
 });
 
 const LOWEST = 0;
+export const PLAYER_OF_DAY_PRIZE_CHARACTER_ID = 'player-of-day-prize';
 const SPECIAL_UNLOCK_DRAWING_IDS = new Set([
-  ...MARKET_BUNDLES.map(bundle => bundle.drawingId),
+  ...ALL_BUNDLES.map(bundle => bundle.drawingId),
+  PLAYER_OF_DAY_PRIZE_CHARACTER_ID,
 ]);
 const LEGACY_EMPTY_BUILD_EXCLUDED_IDS = new Set([
   'c1-left',
@@ -51,7 +53,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Lockdown Slasher',
     'Glue Guy',
   ], LOWEST, 86),
-  character('b1-top-middle', 'Set Shot', [
+  character('b1-top-middle', 'Creative Passer', [
     'Rec League Experiment',
     'Bench Spark',
     'Talented Headache',
@@ -71,7 +73,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Shot-Creating Sniper',
     'Movement Shooter',
   ], LOWEST, 86),
-  character('b1-bottom-left', 'Skywalker', [
+  character('b1-bottom-left', 'Wardell', [
     'Shot-Creating Sniper',
     'Movement Shooter',
     'Floor General',
@@ -103,7 +105,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Lockdown Slasher',
     'Complete Star',
   ], 92, 96),
-  character('b2-right', 'The Floater', [
+  character('b2-right', 'ZO2', [
     'Point Forward',
     'Aerial Playmaker',
     'Defensive Playmaker',
@@ -139,7 +141,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Skilled Shot Maker',
     'Glue Guy',
   ], 82, 87),
-  character('b3-right', 'The Monster', [
+  character('b3-right', 'Venom', [
     'Talented Headache',
     'All-Tools Project',
     'Lumbering Paint Project',
@@ -149,7 +151,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Lockdown Slasher',
     'Athletic Finisher',
   ], 87, 92),
-  character('b4-left', 'Big Body', [
+  character('b4-left', 'Paper Boi', [
     'Rec League Experiment',
     'All-Tools Project',
     'Lumbering Paint Project',
@@ -160,7 +162,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Bench Spark',
     'Balanced Starter',
   ], LOWEST, 87),
-  character('b4-middle', 'Double Trouble', [
+  character('b4-middle', 'No Practice', [
     'Pocket Blur',
     'Shot-Creating Sniper',
     'Movement Shooter',
@@ -170,7 +172,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Skilled Shot Maker',
     'Aerial Playmaker',
   ], 93, 97),
-  character('b4-right', 'The Captain', [
+  character('b4-right', 'Bird', [
     'Shot-Creating Sniper',
     'Movement Shooter',
     '3-and-D Wing',
@@ -181,7 +183,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Glue Guy',
     'Complete Star',
   ], 90, 95),
-  character('b5-left', 'Floor General', [
+  character('b5-left', 'Post God', [
     'All-Tools Project',
     'Lumbering Paint Project',
     'Interior Hub',
@@ -193,7 +195,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Glue Guy',
     'Balanced Starter',
   ], 87, 92),
-  character('b5-right', 'High Flyer', [
+  character('b5-right', 'Personal Player', [
     'GOAT',
     'Complete Star',
     'Three-Level Scorer',
@@ -206,7 +208,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Defensive Playmaker',
     'Lockdown Slasher',
   ], 95, 98),
-  character('b6-middle', 'Golden 99', [
+  character('b6-middle', 'Gold Alien', [
     'GOAT',
     '99 Overall',
     'Stretch Big',
@@ -236,7 +238,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], 84, 89),
-  character('steven', 'Steven', [
+  character('steven', 'Stephen', [
     'Rec League Experiment',
     'Talented Headache',
     'Glass Cannon',
@@ -260,7 +262,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Glue Guy',
     'Complete Star',
   ], 89, 94),
-  character('a1-left', 'The Maverick', [
+  character('a1-left', 'Maverick', [
     'Stretch Big',
     'Interior Hub',
     'Shot-Creating Sniper',
@@ -280,7 +282,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Athletic Finisher',
     'Complete Star',
   ], 94, 98),
-  character('a2-middle', 'Taco Titan', [
+  character('a2-middle', 'Taco Boi', [
     '99 Overall',
   ], 99, 99),
   character('a3-left', 'Escalade', [
@@ -311,16 +313,16 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], LOWEST, 86),
-  character('a4-left', 'Commander', [
+  character('a4-left', 'Prez', [
     '99 Overall',
   ], 99, 99),
-  character('a4-middle', 'Heat Anchor', [
+  character('a4-middle', 'Ima Say Bam', [
     '99 Overall',
   ], 99, 99),
   character('a4-right', 'Dino Dunker', [
     '99 Overall',
   ], 99, 99),
-  character('a5-left', 'Tiny Titan', [
+  character('a5-left', 'IT', [
     'Pocket Blur',
     'Shot-Creating Sniper',
     'Movement Shooter',
@@ -345,7 +347,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Lockdown Slasher',
     'Athletic Finisher',
   ], 88, 93),
-  character('a6-middle', 'Steady Guard', [
+  character('a6-middle', 'No Pants PG', [
     'Pocket Blur',
     'Floor General',
     'Slashing Playmaker',
@@ -362,10 +364,10 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Skilled Shot Maker',
     'Glue Guy',
   ], 85, 89),
-  character('a7-left', 'The Stilt', [
+  character('a7-left', 'Stilt', [
     '99 Overall',
   ], 99, 99),
-  character('a8-left', 'Board Hunter', [
+  character('a8-left', 'High Flying Elbow', [
     'All-Tools Project',
     'Lumbering Paint Project',
     'Interior Hub',
@@ -376,7 +378,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], LOWEST, 84),
-  character('a8-middle', 'Pull-Up Pocket', [
+  character('a8-middle', 'Pull Up Sardine', [
     'Pocket Blur',
     'Shot-Creating Sniper',
     'Movement Shooter',
@@ -385,7 +387,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], LOWEST, 84),
-  character('a8-right', 'Handle Sniper', [
+  character('a8-right', 'Australian Sniper', [
     'Shot-Creating Sniper',
     'Movement Shooter',
     'Floor General',
@@ -394,7 +396,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Balanced Starter',
     'Bench Spark',
   ], LOWEST, 84),
-  character('c1-left', 'Powerhouse Post', [
+  character('c1-left', 'Purple Guy', [
     '99 Overall',
     'GOAT',
     'Interior Hub',
@@ -405,7 +407,7 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Athletic Finisher',
     'Complete Star',
   ], 99, 99),
-  character('c1-middle', 'Final Boss', [
+  character('c1-middle', 'Knicks Legend', [
     '99 Overall',
     'GOAT',
     'Shot-Creating Sniper',
@@ -425,6 +427,18 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Bench Spark',
     'Balanced Starter',
   ], 80, 85),
+  character(PLAYER_OF_DAY_PRIZE_CHARACTER_ID, 'Robo Durant', [
+    '99 Overall',
+    'GOAT',
+    'Complete Star',
+    'Three-Level Scorer',
+    'Point Forward',
+    'Stretch Big',
+    'Aerial Playmaker',
+    'Slashing Playmaker',
+    'Athletic Finisher',
+    'Skilled Shot Maker',
+  ], LOWEST, 99),
   character('gs-sharpshooter', 'Bay Sniper', [
     'Shot-Creating Sniper',
     'Movement Shooter',
@@ -432,6 +446,27 @@ export const ARCHETYPE_CHARACTER_RULES: ArchetypeCharacterRule[] = [
     'Floor General',
     'Three-Level Scorer',
     'Skilled Shot Maker',
+  ], LOWEST, 99),
+  character(FLAME_BUNDLE_DRAWING_ID, 'Fuego Curry', [
+    'Shot-Creating Sniper',
+    'Movement Shooter',
+    'Pocket Blur',
+    'Floor General',
+    'Three-Level Scorer',
+    'Skilled Shot Maker',
+    'Slashing Playmaker',
+    'Aerial Playmaker',
+  ], LOWEST, 99),
+  character(CHRISTMAS_BUNDLE_DRAWING_ID, 'Jolly Kyrie', [
+    'Balanced Starter',
+    'Point Forward',
+    '3-and-D Wing',
+    'Defensive Playmaker',
+    'Floor General',
+    'Slashing Playmaker',
+    'Lockdown Slasher',
+    'Glue Guy',
+    'Complete Star',
   ], LOWEST, 99),
 ];
 
@@ -460,7 +495,9 @@ function seedFromBuild(archetype: string, result: ScoreResult, picks?: PickMap):
 }
 
 export function inCharacterOverallRange(rule: ArchetypeCharacterRule, overall: number): boolean {
-  return overall >= rule.minOverall && overall <= rule.maxOverall;
+  // Built-in drawings are available at every overall. Admin-added drawings
+  // keep their own range checks in the server's custom-drawing path.
+  return Boolean(rule) && Number.isFinite(overall);
 }
 
 export function getArchetypeCharacterById(id?: string | null): ArchetypeCharacterRule | null {

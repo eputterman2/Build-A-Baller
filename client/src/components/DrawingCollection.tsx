@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
-  ARCHETYPE_CHARACTER_RULES,
+  ARCHETYPE_CHARACTER_RULES, FLAME_BUNDLE_DRAWING_ID, PLAYER_OF_DAY_PRIZE_CHARACTER_ID,
   type CollectionBuild, type DrawingCollectionStats,
 } from '@shared/index';
 import { useAuth } from '../auth';
@@ -47,9 +47,45 @@ const DRAWING_BUILD_HINTS: Record<string, string> = {
   'a8-middle': 'Quick midrange scoring builds',
   'a8-right': 'Shooting and ball-handling builds',
   'gs-sharpshooter': 'Shooting and ball-handling builds',
+  [FLAME_BUNDLE_DRAWING_ID]: 'Shooting and ball-handling builds',
+  [PLAYER_OF_DAY_PRIZE_CHARACTER_ID]: 'Tall shooting and finishing builds',
 };
 
+function isBaySniperDrawing(drawing: { id: string; name: string }) {
+  return drawing.id === 'gs-sharpshooter' || drawing.name.trim().toLowerCase() === 'bay sniper';
+}
+
+function isFuegoCurryDrawing(drawing: { id: string; name: string }) {
+  return drawing.id === FLAME_BUNDLE_DRAWING_ID || drawing.name.trim().toLowerCase() === 'fuego curry';
+}
+
+function isHighFlyerDrawing(drawing: { id: string; name: string }) {
+  return drawing.id === 'b5-right' || drawing.name.trim().toLowerCase() === 'high flyer';
+}
+
+function drawingCollectionItemClass(drawing: { id: string; name: string; unlocked: boolean }) {
+  return `drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`
+    + `${isBaySniperDrawing(drawing) ? ' is-bay-sniper-drawing' : ''}`
+    + `${isHighFlyerDrawing(drawing) ? ' is-high-flyer-drawing' : ''}`;
+}
+
+function isPrizeDrawing(drawing: { id: string; name: string; rewardPrize?: boolean }) {
+  return isBaySniperDrawing(drawing)
+    || isFuegoCurryDrawing(drawing)
+    || drawing.id === PLAYER_OF_DAY_PRIZE_CHARACTER_ID
+    || Boolean(drawing.rewardPrize);
+}
+
+function drawingPrizeName(drawing: { id: string; name: string; rewardPrize?: boolean }) {
+  if (isBaySniperDrawing(drawing)) return '3 Day Login Prize';
+  if (isFuegoCurryDrawing(drawing)) return 'Leaderboard Tier Prize';
+  if (drawing.id === PLAYER_OF_DAY_PRIZE_CHARACTER_ID) return 'Player of the Day Prize';
+  if (drawing.rewardPrize) return '93+ OVR Prize';
+  return 'Prize';
+}
+
 function formatOverallRange(minOverall: number, maxOverall: number) {
+  if (minOverall <= 0 && maxOverall >= 99) return 'Any overall';
   if (minOverall === maxOverall) return `${minOverall} overall`;
   if (minOverall <= 0) return `${maxOverall} overall or lower`;
   return `${minOverall}-${maxOverall} overall`;
@@ -61,6 +97,7 @@ export function DrawingCollection() {
   const [drawingStats, setDrawingStats] = useState<DrawingCollectionStats | null>(null);
   const [customRequests, setCustomRequests] = useState<MarketDrawingRequest[] | null>(null);
   const [ownedMarketDrawingIds, setOwnedMarketDrawingIds] = useState<string[]>([]);
+  const [rewardDrawingIds, setRewardDrawingIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [deletingRequestId, setDeletingRequestId] = useState<string | null>(null);
@@ -72,6 +109,7 @@ export function DrawingCollection() {
       setDrawingStats(null);
       setCustomRequests(null);
       setOwnedMarketDrawingIds([]);
+      setRewardDrawingIds([]);
       return;
     }
     setError(null);
@@ -80,17 +118,20 @@ export function DrawingCollection() {
         setBuilds(collection);
         setDrawingStats(stats);
         setCustomRequests(requests);
+        setRewardDrawingIds(market.rewardDrawingIds ?? []);
         const ownedSet = new Set(market.ownedBundleIds);
-        const bundleOptions = market.bundles;
+        const bundleOptions = [...market.bundles, ...(market.rewardBundles ?? [])];
         setOwnedMarketDrawingIds(bundleOptions
           .filter(bundle => ownedSet.has(bundle.id))
-          .map(bundle => bundle.drawingId));
+          .map(bundle => bundle.drawingId)
+          .concat(market.rewardDrawingIds ?? []));
       })
       .catch(err => setError((err as Error).message));
   }, [user]);
 
   const drawings = useMemo(() => {
     const ownedMarketDrawingSet = new Set(ownedMarketDrawingIds);
+    const rewardDrawingSet = new Set(rewardDrawingIds);
     const customDrawings = (customRequests ?? [])
       .filter(request => request.status === 'fulfilled' && request.finalDrawingSrc)
       .map(request => ({
@@ -101,6 +142,8 @@ export function DrawingCollection() {
         custom: true,
         collected: (drawingStats?.[request.characterId]?.cards ?? 0) > 0,
         marketUnlocked: true,
+        prizeUnlocked: false,
+        rewardPrize: false,
         unlocked: true,
         collectionStats: drawingStats?.[request.characterId] ?? {
           cards: 0,
@@ -117,6 +160,7 @@ export function DrawingCollection() {
         playerOfDayWins: 0,
       };
       const marketUnlocked = ownedMarketDrawingSet.has(drawing.id);
+      const prizeUnlocked = drawing.id === PLAYER_OF_DAY_PRIZE_CHARACTER_ID && stats.playerOfDayWins > 0;
       return {
         id: drawing.id,
         src: drawing.src,
@@ -125,16 +169,18 @@ export function DrawingCollection() {
         custom: false,
         collected: stats.cards > 0,
         marketUnlocked,
-        unlocked: stats.cards > 0 || marketUnlocked,
+        prizeUnlocked,
+        rewardPrize: rewardDrawingSet.has(drawing.id),
+        unlocked: stats.cards > 0 || marketUnlocked || prizeUnlocked,
         collectionStats: stats,
-        overallRange: formatOverallRange(drawing.minOverall, drawing.maxOverall),
+        overallRange: 'Any overall',
         buildHint: drawing.minOverall === 99 && drawing.maxOverall === 99
           ? '?'
           : DRAWING_BUILD_HINTS[drawing.id] ?? 'A matching all-around build',
       };
     });
     return [...customDrawings, ...standardDrawings];
-  }, [customRequests, drawingStats, ownedMarketDrawingIds]);
+  }, [customRequests, drawingStats, ownedMarketDrawingIds, rewardDrawingIds]);
 
   const selectedDrawing = drawings.find(drawing => drawing.id === selectedDrawingId);
 
@@ -191,10 +237,10 @@ export function DrawingCollection() {
             <button
               aria-label={drawing.collected
                 ? `See collection stats for ${drawingLabel}`
-                : drawing.marketUnlocked
+                : drawing.marketUnlocked || drawing.prizeUnlocked
                   ? `See unlock details for ${drawingLabel}`
-                  : `See how to unlock ${drawingLabel}`}
-              className={`drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`}
+                  : `See how to collect ${drawingLabel}`}
+              className={drawingCollectionItemClass(drawing)}
               key={drawing.id}
               onClick={() => setSelectedDrawingId(drawing.id)}
               type="button"
@@ -229,10 +275,10 @@ export function DrawingCollection() {
             <button
               aria-label={drawing.collected
                 ? `See collection stats for ${drawingLabel}`
-                : drawing.marketUnlocked
+                : drawing.marketUnlocked || drawing.prizeUnlocked
                   ? `See unlock details for ${drawingLabel}`
-                  : `See how to unlock ${drawingLabel}`}
-              className={`drawing-collection-item ${drawing.unlocked ? 'is-collected' : 'is-locked'}`}
+                  : `See how to collect ${drawingLabel}`}
+              className={drawingCollectionItemClass(drawing)}
               key={drawing.id}
               onClick={() => setSelectedDrawingId(drawing.id)}
               type="button"
@@ -257,18 +303,11 @@ export function DrawingCollection() {
             onClick={event => event.stopPropagation()}
             role="dialog"
           >
-            <button
-              aria-label="Close unlock details"
-              className="drawing-hint-close"
-              onClick={() => setSelectedDrawingId(null)}
-              type="button"
-            >
-              ×
-            </button>
             {selectedDrawing.collected ? (
               <>
                 <p className="drawing-hint-label is-collected">COLLECTED DRAWING</p>
-                <h3 id="drawing-hint-title">Your stats</h3>
+                <h3 className="drawing-hint-name">{selectedDrawing.name}</h3>
+                <h4 id="drawing-hint-title">Your stats</h4>
                 <dl className="drawing-hint-details">
                   <div>
                     <dt>Cards</dt>
@@ -284,14 +323,21 @@ export function DrawingCollection() {
                   </div>
                 </dl>
               </>
-            ) : selectedDrawing.marketUnlocked ? (
+            ) : selectedDrawing.marketUnlocked || selectedDrawing.prizeUnlocked ? (
               <>
                 <p className="drawing-hint-label is-collected">UNLOCKED DRAWING</p>
-                <h3 id="drawing-hint-title">Ready to use</h3>
+                <h3 className="drawing-hint-name">{selectedDrawing.name}</h3>
+                <h4 id="drawing-hint-title">Ready to use</h4>
                 <dl className="drawing-hint-details">
                   <div>
-                    <dt>Source</dt>
-                    <dd>{selectedDrawing.custom ? 'Custom Drawing' : 'Golden State Bundle'}</dd>
+                    <dt>{isPrizeDrawing(selectedDrawing) ? 'Prize' : 'Source'}</dt>
+                    <dd>{isPrizeDrawing(selectedDrawing)
+                        ? drawingPrizeName(selectedDrawing)
+                      : selectedDrawing.custom
+                        ? 'Custom Drawing'
+                      : selectedDrawing.prizeUnlocked
+                        ? 'Player of the Day Prize'
+                        : 'Golden State Bundle'}</dd>
                   </div>
                   <div>
                     <dt>Use it</dt>
@@ -302,18 +348,32 @@ export function DrawingCollection() {
             ) : (
               <>
                 <p className="drawing-hint-label">LOCKED DRAWING</p>
-                <h3 id="drawing-hint-title">How to unlock</h3>
+                <h3 className="drawing-hint-name">{selectedDrawing.name}</h3>
+                <h4 id="drawing-hint-title">How to collect</h4>
                 <dl className="drawing-hint-details">
-                  <>
-                    <div>
-                      <dt>Overall</dt>
-                      <dd>{selectedDrawing.overallRange}</dd>
-                    </div>
-                    <div>
-                      <dt>Build type</dt>
-                      <dd>{selectedDrawing.buildHint}</dd>
-                    </div>
-                  </>
+                  {isPrizeDrawing(selectedDrawing) ? (
+                    <>
+                      <div>
+                        <dt>Prize</dt>
+                        <dd>Complete the {drawingPrizeName(selectedDrawing)}</dd>
+                      </div>
+                      <div>
+                        <dt>Use it</dt>
+                        <dd>Any saved card</dd>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <dt>Overall</dt>
+                        <dd>{selectedDrawing.overallRange}</dd>
+                      </div>
+                      <div>
+                        <dt>Build type</dt>
+                        <dd>{selectedDrawing.buildHint}</dd>
+                      </div>
+                    </>
+                  )}
                 </dl>
               </>
             )}

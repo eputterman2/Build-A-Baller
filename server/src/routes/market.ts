@@ -3,13 +3,17 @@ import type { Request, RequestHandler, Response } from 'express';
 import { Router } from 'express';
 import { z } from 'zod';
 import {
-  ACCESSORIES, MARKET_BUNDLES, MARKET_BUNDLES_BY_ID, customCharacterId,
+  ACCESSORIES, ALL_BUNDLES_BY_ID, ARCHETYPE_CHARACTER_RULES, MARKET_BUNDLES, MARKET_BUNDLES_BY_ID,
+  PLAYER_OF_DAY_PRIZE_CHARACTER_ID, REWARD_BUNDLES, customCharacterId,
+  getArchetypeCharacterById, inCharacterOverallRange, isCustomCharacterId, selectLegacyEmptyBuildCharacter,
+  type AdminDrawingPrizeCompletion, type PickMap, type ScoreResult,
 } from '@shared/index';
 import { requireAuth } from '../auth';
 import { query } from '../db';
 import { config } from '../env';
 import { normalizeDrawingDataUrl } from '../imageProcessing';
 import { hasDisallowedPublicContent } from '../moderation';
+import { claimHighOverallDrawing, getBuildPrizeProgress, getDailyLoginRewardStatus, getOwnedBundleIdsWithRewards, getRewardDrawingIds, isRepeatableRandomDrawingTestAccount } from '../rewardBundles';
 
 export const marketRouter = Router();
 
@@ -69,6 +73,17 @@ const adminFulfillSchema = z.object({
   path: ['minOverall'],
 });
 
+const adminDrawingSubmitSchema = z.object({
+  finalName: z.string().trim().min(2).max(40),
+  finalDrawingDataUrl: z.string().max(5_500_000).optional(),
+  minOverall: z.number().int().min(0).max(99),
+  maxOverall: z.number().int().min(0).max(99),
+  buildHint: z.string().trim().max(240).optional(),
+}).refine(data => data.minOverall <= data.maxOverall, {
+  message: 'Minimum overall must be lower than maximum overall.',
+  path: ['minOverall'],
+});
+
 interface DrawingRequestRow {
   id: string;
   user_id: string;
@@ -91,6 +106,34 @@ interface DrawingRequestRow {
   fulfilled_at: string | null;
   created_at: string;
 }
+
+interface UserContactRow {
+  id: string;
+  username: string;
+  email: string | null;
+}
+
+interface DrawingBuildUnlockRow {
+  user_id: string;
+  character_id: string;
+  picks: PickMap | unknown;
+  result: ScoreResult | unknown;
+  created_at: string;
+}
+
+interface BundleUnlockRow {
+  user_id: string;
+  bundle_id: string;
+  unlocked_at: string;
+}
+
+interface PlayerOfDayUnlockRow {
+  user_id: string;
+  unlocked_at: string;
+}
+
+const ADMIN_DRAWING_USER_ID = 'admin-player-drawings';
+const ADMIN_DRAWING_USERNAME = 'BuildABaller';
 
 function requireAdmin(req: Request, res: Response): boolean {
   if (!config.adminSecret) {
@@ -141,6 +184,75 @@ function mapDrawingRequest(row: DrawingRequestRow, includePhoto = false) {
     fulfilledAt: row.fulfilled_at,
     createdAt: row.created_at,
   };
+}
+
+function formatDrawingOverallRange(minOverall: number, maxOverall: number) {
+  if (minOverall <= 0 && maxOverall >= 99) return 'any overall';
+  if (minOverall === maxOverall) return `${minOverall} overall`;
+  if (minOverall <= 0) return `${maxOverall} overall or lower`;
+  return `${minOverall}-${maxOverall} overall`;
+}
+
+function recentDrawingObtainText(params: {
+  id: string;
+  name?: string | null;
+  buildHint?: string | null;
+  minOverall: number;
+  maxOverall: number;
+}) {
+  if (params.id === 'gs-sharpshooter' || params.name?.trim().toLowerCase() === 'bay sniper') {
+    return 'Complete the 3 Day Login prize.';
+  }
+  if (params.id === PLAYER_OF_DAY_PRIZE_CHARACTER_ID) return 'Complete the Player of the Day prize.';
+
+  if (params.id === 'flame-fuego-curry') return 'Complete the Leaderboard Tier prize.';
+
+  const rewardBundle = REWARD_BUNDLES.find(bundle => bundle.drawingId === params.id);
+  if (rewardBundle) return `Complete the ${rewardBundle.name} prize.`;
+
+  const buildHint = params.buildHint?.trim();
+  if (buildHint && buildHint !== '?' && !/^any build$/i.test(buildHint)) {
+    const hint = buildHint.replace(/\s+builds?$/i, '').toLowerCase();
+    return `Aim for ${formatDrawingOverallRange(params.minOverall, params.maxOverall)} ${hint} builds.`;
+  }
+
+  return `Aim for ${formatDrawingOverallRange(params.minOverall, params.maxOverall)} saved cards.`;
+}
+
+async function adminDrawingUserId(): Promise<string> {
+  const result = await query<{ id: string }>(
+    `INSERT INTO users (id, username, password_hash)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (id) DO UPDATE SET username = EXCLUDED.username
+     RETURNING id`,
+    [ADMIN_DRAWING_USER_ID, ADMIN_DRAWING_USERNAME, 'admin-managed-drawings'],
+  );
+  return result.rows[0]?.id ?? ADMIN_DRAWING_USER_ID;
+}
+
+async function normalizeOptionalAdminDrawing(dataUrl?: string): Promise<string | null> {
+  const value = (dataUrl || '').trim();
+  if (!value) return null;
+  if (!PHOTO_DATA_URL_RE.test(value)) {
+    throw new Error('Upload a PNG, JPG, or WEBP drawing.');
+  }
+  try {
+    return (await normalizeDrawingDataUrl(value)).dataUrl;
+  } catch {
+    throw new Error('The drawing could not be read. Upload a valid PNG, JPG, or WEBP image.');
+  }
+}
+
+function characterIdForPrizeCollection(row: DrawingBuildUnlockRow): string {
+  const requested = typeof row.character_id === 'string' ? row.character_id.trim() : '';
+  if (isCustomCharacterId(requested)) return requested;
+  const scoreResult = row.result as ScoreResult | undefined;
+  const pickMap = row.picks as PickMap | undefined;
+  if (requested && scoreResult) {
+    const rule = getArchetypeCharacterById(requested);
+    if (rule && inCharacterOverallRange(rule, scoreResult.overall)) return requested;
+  }
+  return scoreResult && pickMap ? selectLegacyEmptyBuildCharacter(scoreResult, pickMap).id : requested;
 }
 
 function priceForDrawingRequest(type: DrawingRequestType): number {
@@ -280,20 +392,44 @@ async function fulfillCheckoutSession(session: {
 }
 
 async function ownedBundleIds(userId: string): Promise<string[]> {
-  const result = await query<{ bundle_id: string }>(
-    'SELECT bundle_id FROM user_bundles WHERE user_id = $1',
-    [userId],
-  );
-  return result.rows.map(row => row.bundle_id);
+  return getOwnedBundleIdsWithRewards(userId);
 }
 
 marketRouter.get('/bundles', async (req, res, next) => {
   try {
-    const ownedBundleIdList = req.user ? await ownedBundleIds(req.user.id) : [];
+    const [prizeProgress, ownedBundleIdList, dailyLoginReward, rewardDrawingIds, repeatableRandomDrawingTestAccount, customDrawingCountResult] = await Promise.all([
+      req.user ? getBuildPrizeProgress(req.user.id) : Promise.resolve(null),
+      req.user ? ownedBundleIds(req.user.id) : Promise.resolve([]),
+      req.user ? getDailyLoginRewardStatus(req.user.id) : Promise.resolve(null),
+      req.user ? getRewardDrawingIds(req.user.id) : Promise.resolve([]),
+      req.user ? isRepeatableRandomDrawingTestAccount(req.user.id) : Promise.resolve(false),
+      query<{ count: string }>(
+        `SELECT COUNT(*)::text AS count
+         FROM market_drawing_requests
+         WHERE status = 'fulfilled'
+           AND final_drawing_data_url <> ''
+           AND admin_hidden = FALSE
+           AND visibility = 'public'`,
+      ),
+    ]);
+    const availableDrawingCount = ARCHETYPE_CHARACTER_RULES.length + Number(customDrawingCountResult.rows[0]?.count ?? 0);
     res.json({
       bundles: MARKET_BUNDLES,
+      rewardBundles: REWARD_BUNDLES,
       ownedBundleIds: ownedBundleIdList,
+      dailyLoginReward,
+      prizeProgress,
+      rewardDrawingIds,
+      repeatableRandomDrawingTestAccount,
+      availableDrawingCount,
     });
+  } catch (err) { next(err); }
+});
+
+marketRouter.post('/prizes/high-overall-drawing/claim', requireAuth, async (req, res, next) => {
+  try {
+    const drawing = await claimHighOverallDrawing(req.user!.id);
+    res.json({ drawing });
   } catch (err) { next(err); }
 });
 
@@ -404,6 +540,70 @@ marketRouter.delete('/drawing-requests/:id', requireAuth, async (req, res, next)
   } catch (err) { next(err); }
 });
 
+marketRouter.get('/drawings/recent', async (_req, res, next) => {
+  try {
+    const result = await query<{
+      id: string;
+      name: string;
+      min_overall: number;
+      max_overall: number;
+      build_hint: string | null;
+      added_at: string | null;
+    }>(
+      `SELECT id,
+              COALESCE(NULLIF(final_name, ''), subject) AS name,
+              min_overall,
+              max_overall,
+              build_hint,
+              COALESCE(fulfilled_at, created_at) AS added_at
+       FROM market_drawing_requests
+       WHERE status = 'fulfilled'
+         AND final_drawing_data_url <> ''
+         AND admin_hidden = FALSE
+       ORDER BY COALESCE(fulfilled_at, created_at) DESC, created_at DESC
+       LIMIT 3`,
+    );
+
+    const drawings = result.rows.map(row => ({
+      id: row.id,
+      name: row.name.replace(/\s+preview$/i, ''),
+      src: `/api/market/drawings/${encodeURIComponent(row.id)}/image`,
+      obtainText: recentDrawingObtainText({
+        id: row.id,
+        name: row.name.replace(/\s+preview$/i, ''),
+        buildHint: row.build_hint,
+        minOverall: row.min_overall,
+        maxOverall: row.max_overall,
+      }),
+      addedAt: row.added_at,
+    }));
+    const seenNames = new Set(drawings.map(drawing => drawing.name.trim().toLowerCase()));
+    for (const drawing of [...ARCHETYPE_CHARACTER_RULES].reverse()) {
+      if (drawings.length >= 3) break;
+      const nameKey = drawing.name.trim().toLowerCase();
+      if (seenNames.has(nameKey)) continue;
+      seenNames.add(nameKey);
+      drawings.push({
+        id: drawing.id,
+        name: drawing.name,
+        src: drawing.src,
+        obtainText: recentDrawingObtainText({
+          id: drawing.id,
+          name: drawing.name,
+          buildHint: drawing.archetypes[0],
+          minOverall: 0,
+          maxOverall: 99,
+        }),
+        addedAt: null,
+      });
+    }
+
+    res.json({
+      drawings,
+    });
+  } catch (err) { next(err); }
+});
+
 marketRouter.get('/drawings/:id/image', async (req, res, next) => {
   try {
     const result = await query<{
@@ -457,6 +657,207 @@ marketRouter.get('/admin/drawing-requests', async (req, res, next) => {
        LIMIT 200`,
     );
     res.json({ requests: result.rows.map(row => mapDrawingRequest(row, true)) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.get('/admin/drawing-prize-completions', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const requiredDrawingIds = ARCHETYPE_CHARACTER_RULES.map(rule => rule.id);
+    const requiredDrawingSet = new Set(requiredDrawingIds);
+    const availableDrawings = requiredDrawingIds.length;
+    const [usersResult, buildResult, bundleResult, playerOfDayResult] = await Promise.all([
+      query<UserContactRow>(
+        `SELECT id, username, email
+         FROM users
+         ORDER BY username ASC`,
+      ),
+      query<DrawingBuildUnlockRow>(
+        `SELECT user_id, character_id, picks, result, created_at
+         FROM builds`,
+      ),
+      query<BundleUnlockRow>(
+        `SELECT user_id, bundle_id, purchased_at AS unlocked_at
+         FROM user_bundles
+         UNION ALL
+         SELECT user_id, bundle_id, earned_at AS unlocked_at
+         FROM user_reward_bundles`,
+      ),
+      query<PlayerOfDayUnlockRow>(
+        `SELECT user_id, MIN(created_at) AS unlocked_at
+         FROM player_of_day_wins
+         GROUP BY user_id`,
+      ),
+    ]);
+
+    const unlockedByUser = new Map<string, Map<string, string>>();
+    const addUnlockedDrawing = (userId: string, drawingId: string | undefined, unlockedAt: string) => {
+      if (!userId || !drawingId || !requiredDrawingSet.has(drawingId)) return;
+      if (!unlockedByUser.has(userId)) unlockedByUser.set(userId, new Map());
+      const existing = unlockedByUser.get(userId)!.get(drawingId);
+      if (!existing || new Date(unlockedAt).getTime() < new Date(existing).getTime()) {
+        unlockedByUser.get(userId)!.set(drawingId, unlockedAt);
+      }
+    };
+
+    for (const build of buildResult.rows) {
+      addUnlockedDrawing(build.user_id, characterIdForPrizeCollection(build), build.created_at);
+    }
+    for (const bundle of bundleResult.rows) {
+      addUnlockedDrawing(bundle.user_id, ALL_BUNDLES_BY_ID[bundle.bundle_id]?.drawingId, bundle.unlocked_at);
+    }
+    for (const win of playerOfDayResult.rows) {
+      addUnlockedDrawing(win.user_id, PLAYER_OF_DAY_PRIZE_CHARACTER_ID, win.unlocked_at);
+    }
+
+    const completions: AdminDrawingPrizeCompletion[] = [];
+    for (const user of usersResult.rows) {
+      const unlocked = unlockedByUser.get(user.id) ?? new Map<string, string>();
+      if (unlocked.size < availableDrawings) continue;
+      completions.push({
+        userId: user.id,
+        username: user.username,
+        email: user.email,
+        collectedDrawings: unlocked.size,
+        availableDrawings,
+        completedAt: [...unlocked.values()]
+          .sort((a, b) => new Date(b).getTime() - new Date(a).getTime())[0] ?? null,
+      });
+    }
+    completions.sort((a, b) => {
+      const dateA = a.completedAt ? new Date(a.completedAt).getTime() : 0;
+      const dateB = b.completedAt ? new Date(b.completedAt).getTime() : 0;
+      return dateB - dateA || a.username.localeCompare(b.username);
+    });
+
+    res.json({ completions });
+  } catch (err) { next(err); }
+});
+
+marketRouter.get('/admin/drawings', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const result = await query<DrawingRequestRow>(
+      `SELECT r.*, u.username
+       FROM market_drawing_requests r
+       JOIN users u ON u.id = r.user_id
+       WHERE r.status = 'fulfilled'
+         AND r.final_drawing_data_url <> ''
+         AND r.admin_hidden = FALSE
+       ORDER BY r.fulfilled_at DESC, r.created_at DESC
+       LIMIT 300`,
+    );
+    res.json({ drawings: result.rows.map(row => mapDrawingRequest(row)) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.post('/admin/drawings', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const data = adminDrawingSubmitSchema.parse(req.body);
+    let normalizedDrawing: string | null;
+    try {
+      normalizedDrawing = await normalizeOptionalAdminDrawing(data.finalDrawingDataUrl);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+      return;
+    }
+    if (!normalizedDrawing) {
+      res.status(400).json({ error: 'Upload a PNG, JPG, or WEBP drawing.' });
+      return;
+    }
+
+    const userId = await adminDrawingUserId();
+    const id = randomUUID();
+    const result = await query<DrawingRequestRow>(
+      `INSERT INTO market_drawing_requests
+        (id, user_id, request_type, subject, photo_data_url, price_cents, stripe_session_id,
+         status, paid_at, admin_note, final_name, final_drawing_data_url, visibility,
+         min_overall, max_overall, build_hint, admin_hidden, fulfilled_at)
+       VALUES ($1, $2, 'pro-player', $3, '', 0, '', 'fulfilled', now(), '', $3, $4,
+         'public', $5, $6, $7, FALSE, now())
+       RETURNING *, $8::text AS username`,
+      [
+        id,
+        userId,
+        data.finalName,
+        normalizedDrawing,
+        data.minOverall,
+        data.maxOverall,
+        data.buildHint ?? '',
+        ADMIN_DRAWING_USERNAME,
+      ],
+    );
+    res.status(201).json({ drawing: mapDrawingRequest(result.rows[0]) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.patch('/admin/drawings/:id', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const data = adminDrawingSubmitSchema.parse(req.body);
+    let normalizedDrawing: string | null;
+    try {
+      normalizedDrawing = await normalizeOptionalAdminDrawing(data.finalDrawingDataUrl);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+      return;
+    }
+
+    const result = await query<DrawingRequestRow>(
+      `UPDATE market_drawing_requests r
+       SET subject = $1,
+           final_name = $1,
+           final_drawing_data_url = COALESCE($2, final_drawing_data_url),
+           visibility = 'public',
+           min_overall = $3,
+           max_overall = $4,
+           build_hint = $5,
+           admin_note = '',
+           status = 'fulfilled',
+           admin_hidden = FALSE,
+           fulfilled_at = COALESCE(fulfilled_at, now())
+       FROM users u
+       WHERE r.id = $6
+         AND u.id = r.user_id
+         AND r.status = 'fulfilled'
+         AND r.final_drawing_data_url <> ''
+       RETURNING r.*, u.username`,
+      [
+        data.finalName,
+        normalizedDrawing,
+        data.minOverall,
+        data.maxOverall,
+        data.buildHint ?? '',
+        req.params.id,
+      ],
+    );
+    const row = result.rows[0];
+    if (!row) {
+      res.status(404).json({ error: 'Drawing not found' });
+      return;
+    }
+    res.json({ drawing: mapDrawingRequest(row) });
+  } catch (err) { next(err); }
+});
+
+marketRouter.delete('/admin/drawings/:id', async (req, res, next) => {
+  try {
+    if (!requireAdmin(req, res)) return;
+    const result = await query<{ id: string }>(
+      `UPDATE market_drawing_requests
+       SET admin_hidden = TRUE
+       WHERE id = $1
+         AND status = 'fulfilled'
+         AND final_drawing_data_url <> ''
+       RETURNING id`,
+      [req.params.id],
+    );
+    if (!result.rows[0]) {
+      res.status(404).json({ error: 'Drawing not found' });
+      return;
+    }
+    res.json({ ok: true });
   } catch (err) { next(err); }
 });
 

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 350" role="img" aria-label="Sprite Frame">
+  <defs>
+    <linearGradient id="spriteFrame" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#162d5a"/>
+      <stop offset=".48" stop-color="#176aa2"/>
+      <stop offset="1" stop-color="#25ed3d"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="12" fill="url(#spriteFrame)"/>
+  <rect x="12" y="12" width="226" height="326" rx="9" fill="#fff8ea" stroke="#16181d" stroke-width="3"/>
+</svg>

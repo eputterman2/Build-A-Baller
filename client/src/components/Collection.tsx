@@ -41,14 +41,18 @@ export function Collection() {
         setBuilds(collection);
         setPlayerOfDayWinCount(winHistory.totalWins);
         const ownedBundles = new Set(market.ownedBundleIds);
-        const bundleOptions = market.bundles;
+        const bundleOptions = [...market.bundles, ...(market.rewardBundles ?? [])];
         const ownedBundleDrawings = bundleOptions
           .filter(bundle => ownedBundles.has(bundle.id))
           .map(bundle => bundle.drawingId);
         const fulfilledCustomDrawings = requests
           .filter(request => request.status === 'fulfilled' && request.finalDrawingSrc)
           .map(request => request.characterId);
-        setMarketDrawingIds([...ownedBundleDrawings, ...fulfilledCustomDrawings]);
+        setMarketDrawingIds([
+          ...ownedBundleDrawings,
+          ...(market.rewardDrawingIds ?? []),
+          ...fulfilledCustomDrawings,
+        ]);
       })
       .catch(e => setError((e as Error).message));
   }, [user]);
@@ -148,8 +152,8 @@ export function Collection() {
       id: currentRule.id,
       name: currentRule.name,
       src: currentRule.src,
-      minOverall: currentRule.minOverall,
-      maxOverall: currentRule.maxOverall,
+      minOverall: 0,
+      maxOverall: 99,
       owned: true,
       eligible: true,
       current: true,
@@ -197,6 +201,7 @@ export function Collection() {
         {showAuth && (
           <AuthModal
             onClose={() => setShowAuth(false)}
+            initialMode="login"
             intro="Log in to view your saved player cards."
           />
         )}

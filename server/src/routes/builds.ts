@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import {
   ACCESSORIES_BY_ID, ARCHETYPE_CHARACTER_RULES, ATTRIBUTES, EMPTY_BUILD_ACCESSORIES,
-  EMPTY_PLAYER_IDENTITY, MARKET_BUNDLES_BY_ID, PLAYERS_BY_ID,
+  ALL_BUNDLES_BY_ID, EMPTY_PLAYER_IDENTITY, PLAYER_OF_DAY_PRIZE_CHARACTER_ID, PLAYERS_BY_ID,
   buildArchetype, buildRankMetrics, customCharacterId, customCharacterImageSrc, customCharacterRequestId,
   customDrawingMatchesArchetype,
   getArchetypeCharacterById, gradeFor, inCharacterOverallRange, isCustomCharacterId,
@@ -19,6 +19,7 @@ import {
   safePublicIdentity,
   safePublicUsername,
 } from '../moderation';
+import { getOwnedBundleIdsWithRewards, getRewardDrawingIds, refreshLeaderboardRewardBundles } from '../rewardBundles';
 
 export const buildsRouter = Router();
 
@@ -74,20 +75,34 @@ const characterSchema = z.object({
 });
 
 async function getOwnedBundleIds(userId: string): Promise<Set<string>> {
-  const result = await query<{ bundle_id: string }>(
-    'SELECT bundle_id FROM user_bundles WHERE user_id = $1',
+  return new Set(await getOwnedBundleIdsWithRewards(userId));
+}
+
+async function userHasPlayerOfDayWin(userId: string): Promise<boolean> {
+  const result = await query<{ has_win: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM player_of_day_wins
+       WHERE user_id = $1
+     ) AS has_win`,
     [userId],
   );
-  return new Set(result.rows.map(row => row.bundle_id));
+  return Boolean(result.rows[0]?.has_win);
 }
 
 async function getOwnedMarketDrawingIds(userId: string): Promise<Set<string>> {
-  const bundleIds = await getOwnedBundleIds(userId);
+  const [bundleIds, hasPlayerOfDayWin, rewardDrawingIds] = await Promise.all([
+    getOwnedBundleIds(userId),
+    userHasPlayerOfDayWin(userId),
+    getRewardDrawingIds(userId),
+  ]);
   const drawingIds = new Set<string>();
   for (const bundleId of bundleIds) {
-    const drawingId = MARKET_BUNDLES_BY_ID[bundleId]?.drawingId;
+    const drawingId = ALL_BUNDLES_BY_ID[bundleId]?.drawingId;
     if (drawingId) drawingIds.add(drawingId);
   }
+  if (hasPlayerOfDayWin) drawingIds.add(PLAYER_OF_DAY_PRIZE_CHARACTER_ID);
+  rewardDrawingIds.forEach(drawingId => drawingIds.add(drawingId));
   return drawingIds;
 }
 
@@ -119,6 +134,7 @@ async function getCompletedCustomDrawing(
      WHERE id = $1
        AND status = 'fulfilled'
        AND final_drawing_data_url <> ''
+       AND admin_hidden = FALSE
        AND (visibility = 'public' OR user_id = $2)`,
     [requestId, userId],
   );
@@ -131,6 +147,7 @@ async function getAvailableCustomDrawings(userId: string): Promise<CustomDrawing
      FROM market_drawing_requests
      WHERE status = 'fulfilled'
        AND final_drawing_data_url <> ''
+       AND admin_hidden = FALSE
        AND (visibility = 'public' OR user_id = $1)
      ORDER BY fulfilled_at DESC, created_at DESC`,
     [userId],
@@ -202,17 +219,23 @@ function characterIdForBuild(
 }
 
 async function getUnlockedCharacterIds(userId: string): Promise<Set<string>> {
-  const [buildResult, bundleResult] = await Promise.all([
+  const [buildResult, bundleResult, playerOfDayResult, rewardDrawingIds] = await Promise.all([
     query<DrawingBuildRow>(
       `SELECT character_id, picks, result
        FROM builds
        WHERE user_id = $1`,
       [userId],
     ),
-    query<{ bundle_id: string }>(
-      'SELECT bundle_id FROM user_bundles WHERE user_id = $1',
+    getOwnedBundleIds(userId),
+    query<{ has_win: boolean }>(
+      `SELECT EXISTS (
+         SELECT 1
+         FROM player_of_day_wins
+         WHERE user_id = $1
+       ) AS has_win`,
       [userId],
     ),
+    getRewardDrawingIds(userId),
   ]);
 
   const ids = new Set<string>();
@@ -220,10 +243,12 @@ async function getUnlockedCharacterIds(userId: string): Promise<Set<string>> {
     const id = characterIdForBuild(build.result, build.picks, build.character_id);
     if (id) ids.add(id);
   }
-  for (const bundle of bundleResult.rows) {
-    const drawingId = MARKET_BUNDLES_BY_ID[bundle.bundle_id]?.drawingId;
+  for (const bundleId of bundleResult) {
+    const drawingId = ALL_BUNDLES_BY_ID[bundleId]?.drawingId;
     if (drawingId) ids.add(drawingId);
   }
+  if (playerOfDayResult.rows[0]?.has_win) ids.add(PLAYER_OF_DAY_PRIZE_CHARACTER_ID);
+  rewardDrawingIds.forEach(drawingId => ids.add(drawingId));
   return ids;
 }
 
@@ -681,6 +706,16 @@ buildsRouter.get('/drawing-stats', requireAuth, async (req, res, next) => {
       };
       drawingStats.playerOfDayWins += 1;
     }
+
+    if (winResult.rows.length > 0) {
+      const prizeStats = stats[PLAYER_OF_DAY_PRIZE_CHARACTER_ID] ??= {
+        cards: 0,
+        highestOverall: 0,
+        playerOfDayWins: 0,
+      };
+      prizeStats.playerOfDayWins = Math.max(prizeStats.playerOfDayWins, winResult.rows.length);
+    }
+
     res.json({ stats });
   } catch (err) { next(err); }
 });
@@ -705,8 +740,8 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
         id: rule.id,
         name: rule.name,
         src: rule.src,
-        minOverall: rule.minOverall,
-        maxOverall: rule.maxOverall,
+        minOverall: 0,
+        maxOverall: 99,
         owned: unlockedIds.has(rule.id),
         eligible: inCharacterOverallRange(rule, overall),
         current: rule.id === currentCharacterId,
@@ -732,16 +767,21 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
 // Users ranked by how many unique player drawings they have collected.
 buildsRouter.get('/drawing-collection-leaderboard', async (_req, res, next) => {
   try {
-    const [buildResult, bundleResult, customResult] = await Promise.all([
+    await refreshLeaderboardRewardBundles();
+    const [buildResult, bundleResult, customResult, playerOfDayPrizeResult] = await Promise.all([
       query<DrawingBuildRow>(
         `SELECT u.username, b.character_id, b.picks, b.result
          FROM builds b
          JOIN users u ON u.id = b.user_id`,
       ),
       query<{ username: string; bundle_id: string }>(
-        `SELECT u.username, ub.bundle_id
-         FROM user_bundles ub
-         JOIN users u ON u.id = ub.user_id`,
+        `SELECT u.username, owned.bundle_id
+         FROM (
+           SELECT user_id, bundle_id FROM user_bundles
+           UNION
+           SELECT user_id, bundle_id FROM user_reward_bundles
+         ) owned
+         JOIN users u ON u.id = owned.user_id`,
       ),
       query<{ username: string; id: string }>(
         `SELECT u.username, r.id
@@ -749,6 +789,11 @@ buildsRouter.get('/drawing-collection-leaderboard', async (_req, res, next) => {
          JOIN users u ON u.id = r.user_id
          WHERE r.status = 'fulfilled'
            AND r.final_drawing_data_url <> ''`,
+      ),
+      query<{ username: string }>(
+        `SELECT DISTINCT u.username
+         FROM player_of_day_wins w
+         JOIN users u ON u.id = w.user_id`,
       ),
     ]);
     const byUser = new Map<string, Set<string>>();
@@ -764,10 +809,13 @@ buildsRouter.get('/drawing-collection-leaderboard', async (_req, res, next) => {
       addDrawing(username, drawingId);
     }
     for (const row of bundleResult.rows) {
-      addDrawing(row.username, MARKET_BUNDLES_BY_ID[row.bundle_id]?.drawingId);
+      addDrawing(row.username, ALL_BUNDLES_BY_ID[row.bundle_id]?.drawingId);
     }
     for (const row of customResult.rows) {
       addDrawing(row.username, customCharacterId(row.id));
+    }
+    for (const row of playerOfDayPrizeResult.rows) {
+      addDrawing(row.username, PLAYER_OF_DAY_PRIZE_CHARACTER_ID);
     }
     const leaders: DrawingCollectionLeader[] = [...byUser.entries()]
       .map(([username, drawings]) => ({ username, drawings: drawings.size }))

@@ -177,6 +177,7 @@ export function Accessories() {
         {showAuth && (
           <AuthModal
             onClose={() => setShowAuth(false)}
+            initialMode="login"
             intro="Log in to view your accessories."
           />
         )}
@@ -227,7 +228,6 @@ export function Accessories() {
       {selectedAccessory && (
         <div className="modal-backdrop" onClick={() => setSelectedAccessory(null)}>
           <div className="modal accessory-modal" onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedAccessory(null)} aria-label="Close">×</button>
             <div className={`accessory-modal-preview accessory-modal-preview-${selectedAccessory.type}`}>
               <AccessoryArt accessory={selectedAccessory} />
             </div>

@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 250 350" role="img" aria-label="Flame Frame">
+  <defs>
+    <linearGradient id="flameFrame" x1="0" x2="0" y1="1" y2="0">
+      <stop offset="0" stop-color="#ffd848"/>
+      <stop offset=".38" stop-color="#ffb735"/>
+      <stop offset=".66" stop-color="#ff7a27"/>
+      <stop offset="1" stop-color="#d62d24"/>
+    </linearGradient>
+  </defs>
+  <rect width="250" height="350" rx="12" fill="url(#flameFrame)"/>
+  <rect x="12" y="12" width="226" height="326" rx="9" fill="#fff8ea" stroke="#16181d" stroke-width="3"/>
+</svg>

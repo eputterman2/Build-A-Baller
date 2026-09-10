@@ -15,6 +15,7 @@ import { PlayerAvatar } from './PlayerAvatar';
 import { BuildPanel } from './BuildPanel';
 import { PlayerOfDay } from './PlayerOfDay';
 import { PlayerDrawingPoll } from './PlayerDrawingPoll';
+import { NewPlayers } from './NewPlayers';
 import { FeedbackSection } from './FeedbackSection';
 import { lastName, scoreColor } from '../util';
 
@@ -220,10 +221,11 @@ export function Game({ autoStart = false }: GameProps) {
     api.marketBundles()
       .then(data => {
         if (!alive) return;
-        const bundleOptions = data.bundles;
+        const bundleOptions = [...data.bundles, ...(data.rewardBundles ?? [])];
         setOwnedMarketDrawingIds(bundleOptions
           .filter(bundle => data.ownedBundleIds.includes(bundle.id))
-          .map(bundle => bundle.drawingId));
+          .map(bundle => bundle.drawingId)
+          .concat(data.rewardDrawingIds ?? []));
       })
       .catch(() => {
         if (alive) setOwnedMarketDrawingIds([]);
@@ -478,8 +480,12 @@ export function Game({ autoStart = false }: GameProps) {
         <img className="hero-players" src="/hero-players.png" alt="" />
         <p className="tagline">Build your dream baller one stat at a time.</p>
         <button className="btn btn-primary" onClick={start}>Start Building</button>
+        <Link className="home-prize-teaser" to="/prizes" aria-label="View prizes">
+          <img src="/prizes/2k27-home-arrow-art.png" alt="2K27" />
+        </Link>
         <PlayerOfDay data={playerOfDay} loading={playerOfDayLoading} />
         <PlayerDrawingPoll />
+        <NewPlayers />
         <FeedbackSection />
       </div>
     );

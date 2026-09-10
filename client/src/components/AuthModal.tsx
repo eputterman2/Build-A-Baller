@@ -5,11 +5,12 @@ import { api } from '../api';
 interface AuthModalProps {
   onClose: () => void;
   intro?: string;
+  initialMode?: 'login' | 'register';
 }
 
-export function AuthModal({ onClose, intro }: AuthModalProps) {
+export function AuthModal({ onClose, intro, initialMode = 'register' }: AuthModalProps) {
   const { login, register } = useAuth();
-  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>('register');
+  const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,9 +54,8 @@ export function AuthModal({ onClose, intro }: AuthModalProps) {
   };
 
   return (
-    <div className="modal-backdrop">
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <button className="modal-close" onClick={requestClose} aria-label="Close">×</button>
+    <div className="modal-backdrop" onClick={requestClose}>
+      <div className={`modal auth-modal auth-modal-${mode}`} onClick={e => e.stopPropagation()}>
         <h2>{mode === 'register' ? 'Create an account' : mode === 'forgot' ? 'Reset password' : 'Welcome back'}</h2>
         {intro && <p className="modal-intro">{intro}</p>}
         <form onSubmit={submit}>
