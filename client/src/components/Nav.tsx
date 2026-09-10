@@ -26,7 +26,12 @@ export function Nav() {
         <Link to="/play" className={pathname === '/play' ? 'active' : ''} onClick={goPlay}>Play</Link>
         <Link to="/leaderboard" className={pathname === '/leaderboard' ? 'active' : ''}>Leaderboard</Link>
         <Link to="/collection" className={pathname === '/collection' ? 'active' : ''}>Collection</Link>
-        <Link to="/prizes" className={pathname === '/prizes' || pathname === '/market' ? 'active' : ''}>Prizes</Link>
+        <span className="nav-prizes-anchor">
+          <Link to="/prizes" className={pathname === '/prizes' || pathname === '/market' ? 'active' : ''}>Prizes</Link>
+          {pathname === '/' && (
+            <img className="home-prize-teaser" src="/prizes/2k27-home-arrow-art.png" alt="" aria-hidden="true" />
+          )}
+        </span>
       </nav>
       <div className="nav-auth">
         {user ? (

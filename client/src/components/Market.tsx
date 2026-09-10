@@ -233,6 +233,24 @@ function BundleItemArt({ item }: { item: BundlePreviewItem }) {
   return <img src={item.src} alt={item.alt} />;
 }
 
+function bundleItemPreview(item: BundlePreviewItem): ImagePrizePreview | FramePrizePreview {
+  if (item.kind === 'frame') {
+    return {
+      title: item.name,
+      kind: 'frame',
+      frameId: item.frameId ?? '',
+      statusTone: 'info',
+    };
+  }
+  return {
+    title: item.name,
+    kind: 'image',
+    src: item.src ?? '',
+    alt: item.alt,
+    statusTone: 'info',
+  };
+}
+
 function accessoryPreviewItem(accessory: Accessory): BundlePreviewItem {
   const name = ACCESSORIES_BY_ID[accessory.id]?.name ?? accessory.name;
   return {
@@ -352,6 +370,14 @@ export function Market() {
       });
 
     return () => { alive = false; };
+  }, [user]);
+
+  useEffect(() => {
+    if (window.location.hostname !== 'localhost' || user?.username !== 'heyo') return;
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has('preview-prize-completions')) return;
+    window.localStorage.removeItem(seenCompletionStorageKey(user.id));
+    window.history.replaceState(null, '', `${window.location.pathname}${window.location.hash}`);
   }, [user]);
 
   useEffect(() => {
@@ -499,7 +525,7 @@ export function Market() {
   const drawnIntoGameComplete = availableDrawingCount > 0 && collectedDrawingCount >= availableDrawingCount;
   const drawnIntoGameStatusLabel = drawnIntoGameComplete ? 'Completed' : 'Incomplete';
   const drawnIntoGameStatusTone: PrizeStatusTone = drawnIntoGameComplete ? 'complete' : 'incomplete';
-  const shoeBundleComplete = ownedBundleIds.includes(SHOE_BUNDLE_ID) || collectedDrawingCount >= 50;
+  const shoeBundleComplete = ownedBundleIds.includes(SHOE_BUNDLE_ID) || collectedDrawingCount >= 40;
   const lowerPrizeComplete = (id: LowerTierPrizeId) => {
     switch (id) {
       case 'shoe-bundle':
@@ -513,7 +539,7 @@ export function Market() {
       case 'build-93':
         return bestBuildOverall != null && bestBuildOverall >= 93;
       case 'collect-25':
-        return collectedDrawingCount >= 25;
+        return collectedDrawingCount >= 20;
       default:
         return false;
     }
@@ -998,7 +1024,7 @@ export function Market() {
       {previewPrize && (
         <div className="modal-backdrop" onClick={() => setPreviewPrize(null)} role="presentation">
           <div
-            className={`modal prize-preview-modal${previewPrize.kind === 'bundle' ? ' prize-preview-modal-bundle' : ''}${previewPrize.kind === 'bundle' && previewPrize.items.length <= 3 ? ' is-compact-bundle-modal' : ''}${previewPrize.title === 'LeBron Card Banner' ? ' lebron-banner-preview-modal' : ''}${previewPrize.title === 'Sprite Bundle' ? ' sprite-bundle-preview-modal' : ''}`}
+            className={`modal prize-preview-modal${previewPrize.kind === 'bundle' ? ' prize-preview-modal-bundle' : ''}${previewPrize.kind === 'bundle' && previewPrize.items.length <= 3 ? ' is-compact-bundle-modal' : ''}${previewPrize.title === 'LeBron Card Banner' ? ' lebron-banner-preview-modal' : ''}${previewPrize.title === 'Soda Can Icon' ? ' soda-can-icon-preview-modal' : ''}${previewPrize.title === 'Sprite Bundle' ? ' sprite-bundle-preview-modal' : ''}`}
             onClick={event => event.stopPropagation()}
             role="dialog"
             aria-modal="true"
@@ -1012,13 +1038,16 @@ export function Market() {
                   aria-label={`${previewPrize.title} prizes`}
                 >
                   {previewPrize.items.map(item => (
-                    <div
+                    <button
+                      aria-label={`Preview ${item.name}`}
                       className="prize-bundle-preview-item"
                       key={item.id}
+                      onClick={() => setPreviewPrize(bundleItemPreview(item))}
+                      type="button"
                     >
                       <BundleItemArt item={item} />
                       <span>{item.name}</span>
-                    </div>
+                    </button>
                   ))}
                 </div>
               ) : previewPrize.kind === 'frame' ? (

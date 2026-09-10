@@ -480,9 +480,6 @@ export function Game({ autoStart = false }: GameProps) {
         <img className="hero-players" src="/hero-players.png" alt="" />
         <p className="tagline">Build your dream baller one stat at a time.</p>
         <button className="btn btn-primary" onClick={start}>Start Building</button>
-        <Link className="home-prize-teaser" to="/prizes" aria-label="View prizes">
-          <img src="/prizes/2k27-home-arrow-art.png" alt="2K27" />
-        </Link>
         <PlayerOfDay data={playerOfDay} loading={playerOfDayLoading} />
         <PlayerDrawingPoll />
         <NewPlayers />

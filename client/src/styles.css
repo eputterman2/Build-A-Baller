@@ -44,19 +44,26 @@ body {
 
 /* ---- Nav ---- */
 .nav {
-  display: flex; align-items: center; justify-content: space-between;
+  display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center;
   padding: 16px 4px; margin-bottom: 10px; flex-wrap: wrap; gap: 10px;
   border-bottom: 3px solid var(--ink);
 }
-.brand { display: flex; align-items: center; text-decoration: none; }
+.brand { display: flex; align-items: center; justify-self: start; text-decoration: none; }
 .nav-logo { height: 64px; display: block; transform: translateY(7px); }
-.nav-links { display: flex; align-items: center; gap: 16px; margin-left: auto; }
+.nav-links { display: flex; align-items: center; justify-self: center; gap: 16px; margin-left: 0; }
 .nav-links a { color: var(--ink); text-decoration: none; font-size: 20px; }
 .nav-links a.active { color: var(--red); }
 .nav-links a:hover { color: var(--blue); }
-.nav-auth { display: flex; align-items: center; justify-content: flex-end; }
-.nav-user { display: flex; align-items: center; gap: 10px; }
-.username { color: var(--red); font-size: 18px; }
+.nav-prizes-anchor { position: relative; display: flex; align-items: center; }
+.nav-auth {
+  display: flex; align-items: center; justify-content: flex-end; justify-self: end;
+  width: 180px; min-width: 180px; max-width: 180px;
+}
+.nav-user { display: flex; align-items: center; justify-content: flex-end; gap: 10px; min-width: 0; width: 100%; }
+.username {
+  min-width: 0; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--red); font-size: 18px;
+}
 
 /* ---- Buttons (comic stickers) ---- */
 .btn {
@@ -100,21 +107,15 @@ body {
 .tagline { color: var(--ink); max-width: 560px; margin: 0 auto 14px; font-size: 22px; line-height: 1.4; }
 .hero .btn { font-size: 30px; padding: 12px 40px; }
 .home-prize-teaser {
-  position: absolute; top: -2px; right: calc(clamp(74px, 12vw, 136px) - 13px); z-index: 3;
+  position: absolute; top: calc(100% + 47px); left: calc(50% - 56px); z-index: 3;
   display: block; width: clamp(108px, 17vw, 148px);
-  text-decoration: none; transform: rotate(2deg);
+  height: auto; pointer-events: none; transform: translateX(-50%) rotate(2deg);
 }
-.home-prize-teaser img {
-  display: block; width: 100%; height: auto;
-}
-.home-prize-teaser:hover,
-.home-prize-teaser:focus-visible { transform: rotate(2deg) translate(-1px, -1px); }
-.home-prize-teaser:focus-visible { outline: 3px solid rgba(47,89,166,.28); outline-offset: 5px; border-radius: 8px; }
 @media (max-width: 620px) {
   .hero-hand-drawn-pennant { top: 54%; width: 40%; }
   .hero-players { margin-bottom: -28px; }
   .tagline { margin-top: 0; margin-bottom: 14px; }
-  .home-prize-teaser { top: 2px; right: 9px; width: 92px; }
+  .home-prize-teaser { top: calc(100% + 44px); width: 92px; }
 }
 .player-of-day {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 22px;
@@ -202,6 +203,9 @@ body {
     grid-row: 1;
     justify-self: end;
     align-self: center;
+    width: auto;
+    min-width: 0;
+    max-width: none;
   }
   .nav-auth .btn-small {
     padding: 9px 16px;
@@ -790,8 +794,8 @@ body {
   align-content: start;
 }
 .lower-prize-card:hover {
-  transform: none;
-  box-shadow: var(--shadow-sm);
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 rgba(22,24,29,0.72);
 }
 .lower-prize-card.is-blue {
   --prize-accent: var(--blue);
@@ -967,6 +971,9 @@ body {
   padding: 18px 24px;
   margin: 18px auto 14px;
 }
+.modal.soda-can-icon-preview-modal .prize-preview-art > img {
+  transform: translateX(-7px);
+}
 .modal.sprite-bundle-preview-modal {
   box-sizing: border-box;
   width: min(360px, calc(100vw - 32px));
@@ -1004,8 +1011,18 @@ body {
 .prize-bundle-preview-item {
   display: grid; grid-template-rows: 1fr auto; place-items: center; gap: 8px; min-height: 150px;
   padding: 12px 10px; background: #fffdf7; border: 2px solid var(--ink); border-radius: 10px;
-  width: 100%; font: inherit; cursor: default; pointer-events: none;
-  transition: none;
+  width: 100%; color: inherit; font: inherit; cursor: pointer; pointer-events: auto; text-align: center;
+  transition: transform .1s ease, box-shadow .1s ease, background .15s ease;
+}
+.prize-bundle-preview-item:hover,
+.prize-bundle-preview-item:focus-visible {
+  transform: translate(-1px, -1px);
+  box-shadow: 4px 4px 0 rgba(22,24,29,.8);
+  background: #fff;
+}
+.prize-bundle-preview-item:focus-visible {
+  outline: 3px solid var(--blue);
+  outline-offset: 3px;
 }
 .prize-bundle-preview-item img {
   width: min(104px, 90%); max-height: 116px; object-fit: contain; display: block;
@@ -1022,7 +1039,9 @@ body {
 }
 .prize-preview-modal .prize-status { display: inline-flex; justify-self: center; margin: 0 auto; }
 .prize-completion-modal {
-  max-width: 420px;
+  width: fit-content;
+  max-width: min(420px, calc(100vw - 32px));
+  box-sizing: border-box;
   text-align: center;
 }
 .prize-completion-modal h2 {
