@@ -620,6 +620,7 @@ function ContestCardPreview({
     event.preventDefault();
     onPreview();
   };
+  const artistLabel = rank ? `${entry.artist}(#${rank})` : entry.artist;
 
   return (
     <article
@@ -649,7 +650,7 @@ function ContestCardPreview({
         >
           {entry.viewerHasVoted ? 'Voted' : entry.isOwnEntry ? 'Use 1 Vote' : 'Vote'}
         </button>
-        <p>{entry.artist}</p>
+        <p>{artistLabel}</p>
         <strong>{voteCountLabel(entry.votes)}</strong>
       </div>
     </article>
@@ -1062,9 +1063,9 @@ export function PrizeDetailsPage() {
                     <ContestCardPreview
                       entry={entry}
                       key={entry.id}
-                      onPreview={() => setPreviewEntry({ entry, rank: popularPage * 4 + index + 1 })}
+                      onPreview={() => setPreviewEntry({ entry, rank: entry.rank ?? popularPage * 4 + index + 1 })}
                       onVote={handleVoteEntry}
-                      rank={popularPage * 4 + index + 1}
+                      rank={entry.rank ?? popularPage * 4 + index + 1}
                       voting={votingEntryId === entry.id}
                     />
                   ))}
@@ -1096,8 +1097,9 @@ export function PrizeDetailsPage() {
                     <ContestCardPreview
                       entry={entry}
                       key={entry.id}
-                      onPreview={() => setPreviewEntry({ entry })}
+                      onPreview={() => setPreviewEntry({ entry, rank: entry.rank ?? undefined })}
                       onVote={handleVoteEntry}
+                      rank={entry.rank ?? undefined}
                       voting={votingEntryId === entry.id}
                     />
                   ))}

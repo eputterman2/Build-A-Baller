@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ATTRIBUTES, ATTRIBUTE_GROUPS, PLAYERS, PLAYERS_BY_ID,
   attributeScore, buildArchetypeTitle, computeBuild, formatValue, idealWeightForHeight,
@@ -158,6 +158,7 @@ const tutorialCopy: Record<TutorialStep, { title: string; body: string }> = {
 export function Game({ autoStart = false }: GameProps) {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const initialNavigationState = location.state as { play?: number } | null;
 
   const [phase, setPhase] = useState<Phase>(() => autoStart || initialNavigationState?.play ? 'pick' : 'intro');
@@ -222,10 +223,9 @@ export function Game({ autoStart = false }: GameProps) {
       .then(data => {
         if (!alive) return;
         const bundleOptions = [...data.bundles, ...(data.rewardBundles ?? [])];
-        setOwnedMarketDrawingIds(bundleOptions
-          .filter(bundle => data.ownedBundleIds.includes(bundle.id))
-          .map(bundle => bundle.drawingId)
-          .concat(data.rewardDrawingIds ?? []));
+        const ownedBundles = bundleOptions.filter(bundle => data.ownedBundleIds.includes(bundle.id));
+        const ownedBundleDrawingIds = ownedBundles.map(bundle => bundle.drawingId);
+        setOwnedMarketDrawingIds(ownedBundleDrawingIds.concat(data.rewardDrawingIds ?? []));
       })
       .catch(() => {
         if (alive) setOwnedMarketDrawingIds([]);
@@ -244,6 +244,9 @@ export function Game({ autoStart = false }: GameProps) {
   }, [clearTimers]);
 
   const start = useCallback(() => {
+    if (location.pathname === '/') {
+      navigate('/play', { state: { play: Date.now() } });
+    }
     setPicks({} as PickMap);
     setFinal(null);
     setSaveError(null);
@@ -256,7 +259,7 @@ export function Game({ autoStart = false }: GameProps) {
     setGroup(0);
     setPhase('pick');
     loadRound(0);
-  }, [loadRound]);
+  }, [loadRound, location.pathname, navigate]);
 
   // Logo returns home; Play-style CTAs start a fresh game.
   useEffect(() => {

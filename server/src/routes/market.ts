@@ -5,7 +5,7 @@ import { z } from 'zod';
 import {
   ACCESSORIES, ALL_BUNDLES_BY_ID, ARCHETYPE_CHARACTER_RULES, MARKET_BUNDLES, MARKET_BUNDLES_BY_ID,
   PLAYER_OF_DAY_PRIZE_CHARACTER_ID, REWARD_BUNDLES, customCharacterId,
-  getArchetypeCharacterById, inCharacterOverallRange, isCustomCharacterId, selectLegacyEmptyBuildCharacter,
+  getArchetypeCharacterById, isCustomCharacterId, selectLegacyEmptyBuildCharacter,
   type AdminDrawingPrizeCompletion, type PickMap, type ScoreResult,
 } from '@shared/index';
 import { requireAuth } from '../auth';
@@ -248,10 +248,7 @@ function characterIdForPrizeCollection(row: DrawingBuildUnlockRow): string {
   if (isCustomCharacterId(requested)) return requested;
   const scoreResult = row.result as ScoreResult | undefined;
   const pickMap = row.picks as PickMap | undefined;
-  if (requested && scoreResult) {
-    const rule = getArchetypeCharacterById(requested);
-    if (rule && inCharacterOverallRange(rule, scoreResult.overall)) return requested;
-  }
+  if (requested && getArchetypeCharacterById(requested)) return requested;
   return scoreResult && pickMap ? selectLegacyEmptyBuildCharacter(scoreResult, pickMap).id : requested;
 }
 

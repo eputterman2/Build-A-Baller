@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  ACCESSORIES_BY_ID, COMMON_COUNTRIES, EMPTY_BUILD_ACCESSORIES, EMPTY_PLAYER_IDENTITY, normalizePlayerIdentity,
+  COMMON_COUNTRIES, EMPTY_BUILD_ACCESSORIES, EMPTY_PLAYER_IDENTITY, normalizePlayerIdentity,
   type Accessory, type AccessoryType, type BuildAccessories, type PlayerIdentity,
 } from '@shared/index';
 import { api } from '../api';
@@ -18,6 +18,17 @@ interface SaveIdentityModalProps {
   showSkip?: boolean;
   showAccessories?: boolean;
   extraContent?: ReactNode;
+}
+
+function AccessoryArt({ accessory }: { accessory: Accessory }) {
+  if (accessory.type === 'cardFrame') {
+    return (
+      <span className="frame-preview" aria-hidden="true">
+        <span className={`frame-preview-card sports-card-front has-card-frame card-frame-${accessory.id}`} />
+      </span>
+    );
+  }
+  return <img src={accessory.src} alt="" />;
 }
 
 export function SaveIdentityModal({
@@ -37,6 +48,8 @@ export function SaveIdentityModal({
   const [accessories, setAccessories] = useState<BuildAccessories>(() => ({ ...EMPTY_BUILD_ACCESSORIES, ...initialAccessories }));
   const [ownedAccessories, setOwnedAccessories] = useState<Accessory[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const accessoryOptionsRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [scrollableAccessories, setScrollableAccessories] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!showAccessories) return;
@@ -66,6 +79,24 @@ export function SaveIdentityModal({
     setAccessories(current => ({ ...current, [key]: value }));
   };
 
+  useEffect(() => {
+    const measureAccessoryScroll = () => {
+      const next = Object.fromEntries(
+        Object.entries(accessoryOptionsRefs.current).map(([type, element]) => [
+          type,
+          Boolean(element && element.scrollWidth > element.clientWidth + 1),
+        ]),
+      );
+      setScrollableAccessories(next);
+    };
+    const frame = window.requestAnimationFrame(measureAccessoryScroll);
+    window.addEventListener('resize', measureAccessoryScroll);
+    return () => {
+      window.cancelAnimationFrame(frame);
+      window.removeEventListener('resize', measureAccessoryScroll);
+    };
+  }, [groupedAccessories]);
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const normalized = normalizePlayerIdentity(identity);
@@ -75,32 +106,58 @@ export function SaveIdentityModal({
     }
     setError(null);
     try {
-      await onSave(normalized.identity, accessories);
+      await onSave(normalized.identity, { ...accessories, userIconId: '' });
     } catch (err) {
       setError((err as Error).message);
     }
   };
 
-  const renderAccessorySelect = (
+  const renderAccessoryChoices = (
     label: string,
     key: keyof BuildAccessories,
-    type: AccessoryType,
+    type: Exclude<AccessoryType, 'userIcon'>,
   ) => (
-    <label>
-      {label}
-      <select
-        value={accessories[key]}
-        onChange={e => updateAccessory(key, e.target.value)}
-      >
-        <option value="">None</option>
-        {groupedAccessories[type].map(accessory => (
-          <option key={accessory.id} value={accessory.id}>
-            {ACCESSORIES_BY_ID[accessory.id]?.name ?? accessory.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <fieldset className={`identity-accessory-choice identity-accessory-choice-${type}`}>
+      <legend>{label}</legend>
+      <div className="identity-accessory-scroll">
+        <div
+          className={`identity-accessory-options${scrollableAccessories[type] ? ' is-scrollable' : ''}`}
+          ref={element => { accessoryOptionsRefs.current[type] = element; }}
+        >
+        <label className={`identity-accessory-option identity-accessory-none-option${accessories[key] === '' ? ' is-selected' : ''}`}>
+            <input
+              type="radio"
+              name={`save-${key}`}
+              value=""
+              checked={accessories[key] === ''}
+              onChange={() => updateAccessory(key, '')}
+            />
+          <span className="identity-accessory-art identity-accessory-art-none" aria-hidden="true">None</span>
+          </label>
+          {groupedAccessories[type].map(accessory => (
+            <label
+              className={`identity-accessory-option${accessories[key] === accessory.id ? ' is-selected' : ''}`}
+              key={accessory.id}
+            >
+              <input
+                type="radio"
+                name={`save-${key}`}
+                value={accessory.id}
+                checked={accessories[key] === accessory.id}
+                onChange={() => updateAccessory(key, accessory.id)}
+              />
+              <span className="identity-accessory-art">
+                <AccessoryArt accessory={accessory} />
+              </span>
+              <span>{accessory.name}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+    </fieldset>
   );
+
+  const ownedCardAccessories = groupedAccessories.cardFrame.length + groupedAccessories.cardBanner.length;
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -144,12 +201,11 @@ export function SaveIdentityModal({
               ))}
             </select>
           </label>
-          {showAccessories && ownedAccessories.length > 0 && (
+          {showAccessories && ownedCardAccessories > 0 && (
             <div className="identity-accessories">
               <h3>Apply Accessories</h3>
-              {renderAccessorySelect('User icon', 'userIconId', 'userIcon')}
-              {renderAccessorySelect('Card frame', 'cardFrameId', 'cardFrame')}
-              {renderAccessorySelect('Card banner', 'cardBannerId', 'cardBanner')}
+              {groupedAccessories.cardFrame.length > 0 && renderAccessoryChoices('Card frame', 'cardFrameId', 'cardFrame')}
+              {groupedAccessories.cardBanner.length > 0 && renderAccessoryChoices('Card banner', 'cardBannerId', 'cardBanner')}
             </div>
           )}
           {extraContent}

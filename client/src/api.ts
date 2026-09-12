@@ -123,6 +123,13 @@ export interface AdminAnalytics {
     lastSeenAt: string;
   }>;
   issuesWindow: string;
+  feedback: Array<{
+    id: string;
+    username: string;
+    message: string;
+    wordCount: number;
+    createdAt: string;
+  }>;
 }
 
 function adminHeaders(secret: string): HeadersInit {

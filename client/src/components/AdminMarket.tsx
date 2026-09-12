@@ -22,6 +22,40 @@ function formatDate(value?: string | null): string {
   });
 }
 
+type AdminIssue = AdminAnalytics['issues'][number];
+
+function issuePageLabel(path: string): string {
+  const labels: Record<string, string> = {
+    '/': 'the home page',
+    '/play': 'the game page',
+    '/prizes': 'the prizes page',
+    '/collection': 'the collection page',
+    '/leaderboard': 'the leaderboard page',
+  };
+  return labels[path] || `the page at ${path}`;
+}
+
+function describeTechnicalIssue(issue: AdminIssue): string {
+  const message = issue.message.toLowerCase();
+  const reportCount = `${issue.occurrences.toLocaleString()} report${issue.occurrences === 1 ? '' : 's'}`;
+  const page = issuePageLabel(issue.path);
+  const lastSeen = formatDate(issue.lastSeenAt);
+
+  if (message.includes('load failed')) {
+    return `Visitors had ${reportCount} where content failed to load on ${page}; the latest report was ${lastSeen}. Recommended fix: review the page's network requests and add a retry or friendly fallback so a temporary API or asset failure does not leave the page incomplete.`;
+  }
+
+  if (message.includes('script error')) {
+    return `Visitors had ${reportCount} where a browser script stopped working on ${page}; the latest report was ${lastSeen}. Recommended fix: use the browser console and source maps to identify the failing action, then add an error boundary or recovery state so the user can continue instead of seeing a broken screen.`;
+  }
+
+  if (message.includes('fetch') || message.includes('network') || message.includes('timeout')) {
+    return `Visitors had ${reportCount} where a network request did not finish on ${page}; the latest report was ${lastSeen}. Recommended fix: check the API response and timeout handling, then add a retry option and a clear message when the connection is unavailable.`;
+  }
+
+  return `Visitors had ${reportCount} where a technical problem occurred on ${page}; the latest report was ${lastSeen}. Recommended fix: inspect the page's browser and server logs around this event, then add a recovery message or retry action so the problem does not block the user.`;
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -325,23 +359,41 @@ export function AdminMarket() {
                     <span>Technical Issues</span>
                     <h4>{analytics.issuesWindow}</h4>
                   </div>
-                  <small>Grouped by message and page</small>
+                  <small>Plain-language summary and recommended fixes</small>
                 </div>
                 {analytics.issues.length === 0 ? (
                   <div className="admin-empty-card">No technical issues have been reported this week.</div>
                 ) : (
                   <div className="admin-analytics-issue-list">
                     {analytics.issues.map(issue => (
-                      <div className="admin-analytics-issue" key={`${issue.type}-${issue.path}-${issue.message}`}>
-                        <span>
-                          <b>{issue.message}</b>
-                          <small>{issue.path} · {issue.type}</small>
-                        </span>
-                        <span>
-                          <b>{issue.occurrences}×</b>
-                          <small>last seen {formatDate(issue.lastSeenAt)}</small>
-                        </span>
-                      </div>
+                      <p className="admin-analytics-issue-summary" key={`${issue.type}-${issue.path}-${issue.message}`}>
+                        {describeTechnicalIssue(issue)}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="admin-feedback">
+                <div className="admin-analytics-issues-head">
+                  <div>
+                    <span>User Feedback</span>
+                    <h4>Recent Responses</h4>
+                  </div>
+                  <small>{analytics.feedback.length.toLocaleString()} response{analytics.feedback.length === 1 ? '' : 's'}</small>
+                </div>
+                {analytics.feedback.length === 0 ? (
+                  <div className="admin-empty-card">No feedback responses have been submitted yet.</div>
+                ) : (
+                  <div className="admin-feedback-list" aria-label="Recent user feedback">
+                    {analytics.feedback.map(item => (
+                      <article className="admin-feedback-entry" key={item.id}>
+                        <div className="admin-feedback-entry-head">
+                          <b>{item.username ? `@${item.username}` : 'Anonymous visitor'}</b>
+                          <small>{formatDate(item.createdAt)}</small>
+                        </div>
+                        <p>{item.message}</p>
+                      </article>
                     ))}
                   </div>
                 )}

@@ -1,5 +1,7 @@
 import { archetypeFamily, buildArchetype } from './analysis';
-import { ALL_BUNDLES, CHRISTMAS_BUNDLE_DRAWING_ID, FLAME_BUNDLE_DRAWING_ID } from './accessories';
+import {
+  ALL_BUNDLES, CHRISTMAS_BUNDLE_DRAWING_ID, FLAME_BUNDLE_DRAWING_ID, REWARD_BUNDLES,
+} from './accessories';
 import type { PickMap, ScoreResult } from './types';
 
 export interface ArchetypeCharacter {
@@ -26,13 +28,17 @@ const character = (
   archetypes,
   minOverall,
   maxOverall,
-  src: `/archetype-players/${id}.png?v=9`,
+  src: `/archetype-players/${id}.png?v=${id === 'a3-left' ? 11 : 10}`,
 });
 
 const LOWEST = 0;
 export const PLAYER_OF_DAY_PRIZE_CHARACTER_ID = 'player-of-day-prize';
 const SPECIAL_UNLOCK_DRAWING_IDS = new Set([
   ...ALL_BUNDLES.map(bundle => bundle.drawingId),
+  PLAYER_OF_DAY_PRIZE_CHARACTER_ID,
+]);
+const PRIZE_UNLOCK_DRAWING_IDS = new Set([
+  ...REWARD_BUNDLES.map(bundle => bundle.drawingId),
   PLAYER_OF_DAY_PRIZE_CHARACTER_ID,
 ]);
 const LEGACY_EMPTY_BUILD_EXCLUDED_IDS = new Set([
@@ -494,10 +500,13 @@ function seedFromBuild(archetype: string, result: ScoreResult, picks?: PickMap):
   return `${archetype}|${result.overall}|${result.injuryRisk}|${pickSeed}`;
 }
 
-export function inCharacterOverallRange(rule: ArchetypeCharacterRule, overall: number): boolean {
-  // Built-in drawings are available at every overall. Admin-added drawings
-  // keep their own range checks in the server's custom-drawing path.
-  return Boolean(rule) && Number.isFinite(overall);
+export function inCharacterOverallRange(
+  rule: ArchetypeCharacterRule,
+  overall: number,
+): boolean {
+  if (!rule || !Number.isFinite(overall)) return false;
+  if (PRIZE_UNLOCK_DRAWING_IDS.has(rule.id)) return true;
+  return overall >= rule.minOverall && overall <= rule.maxOverall;
 }
 
 export function getArchetypeCharacterById(id?: string | null): ArchetypeCharacterRule | null {
@@ -534,7 +543,7 @@ export function resolveArchetypeCharacter(
     };
   }
   const savedCharacter = getArchetypeCharacterById(characterId);
-  if (savedCharacter && inCharacterOverallRange(savedCharacter, result.overall)) {
+  if (savedCharacter) {
     return {
       id: savedCharacter.id,
       name: savedCharacter.name,
@@ -573,7 +582,8 @@ function selectArchetypeCharacterFromRules(
     rule.archetypes.includes(family) && inCharacterOverallRange(rule, result.overall));
   if (exactOptions.length) return pickOption(exactOptions, family, result, picks);
 
-  const scoreFallback = selectableRules.filter(rule => inCharacterOverallRange(rule, result.overall));
+  const scoreFallback = selectableRules.filter(rule =>
+    inCharacterOverallRange(rule, result.overall));
   if (scoreFallback.length) return pickOption(scoreFallback, family, result, picks);
 
   const archetypeFallback = selectableRules.filter(rule => rule.archetypes.includes(family));

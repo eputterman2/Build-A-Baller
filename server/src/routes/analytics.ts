@@ -5,6 +5,14 @@ import { query } from '../db';
 
 export const analyticsRouter = Router();
 
+interface FeedbackRow {
+  id: string;
+  username: string;
+  message: string;
+  word_count: string;
+  created_at: string;
+}
+
 const visitSchema = z.object({
   visitorId: z.string().trim().min(8).max(120),
   path: z.string().trim().min(1).max(240).default('/'),
@@ -60,7 +68,7 @@ analyticsRouter.post('/issue', async (req, res, next) => {
 analyticsRouter.get('/admin', async (req, res, next) => {
   if (!requireAdmin(req, res)) return;
   try {
-    const [visitorCounts, accountCount, issues] = await Promise.all([
+    const [visitorCounts, accountCount, issues, feedback] = await Promise.all([
       query<{ period: string; total: string; returning: string }>(
         `SELECT period,
                 COUNT(DISTINCT visitor_id)::text AS total,
@@ -90,6 +98,12 @@ analyticsRouter.get('/admin', async (req, res, next) => {
          ORDER BY COUNT(*) DESC, MAX(created_at) DESC
          LIMIT 25`,
       ),
+      query<FeedbackRow>(
+        `SELECT id, username, message, word_count::text, created_at
+         FROM feedback_messages
+         ORDER BY created_at DESC
+         LIMIT 100`,
+      ),
     ]);
 
     const byPeriod = Object.fromEntries(visitorCounts.rows.map(row => [row.period, {
@@ -111,6 +125,13 @@ analyticsRouter.get('/admin', async (req, res, next) => {
         lastSeenAt: issue.last_seen_at,
       })),
       issuesWindow: 'Last 7 days',
+      feedback: feedback.rows.map(item => ({
+        id: item.id,
+        username: item.username,
+        message: item.message,
+        wordCount: Number(item.word_count),
+        createdAt: item.created_at,
+      })),
     });
   } catch (err) { next(err); }
 });

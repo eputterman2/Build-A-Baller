@@ -211,10 +211,7 @@ function characterIdForBuild(
   if (isCustomCharacterId(requested)) return requested;
   const scoreResult = result as ScoreResult | undefined;
   const pickMap = picks as PickMap | undefined;
-  if (requested && scoreResult) {
-    const rule = getArchetypeCharacterById(requested);
-    if (rule && inCharacterOverallRange(rule, scoreResult.overall)) return requested;
-  }
+  if (requested && getArchetypeCharacterById(requested)) return requested;
   return scoreResult && pickMap ? selectLegacyEmptyBuildCharacter(scoreResult, pickMap).id : requested;
 }
 
@@ -740,13 +737,15 @@ buildsRouter.get('/drawing-options', requireAuth, async (req, res, next) => {
         id: rule.id,
         name: rule.name,
         src: rule.src,
-        minOverall: 0,
-        maxOverall: 99,
+        minOverall: rule.minOverall,
+        maxOverall: rule.maxOverall,
         owned: unlockedIds.has(rule.id),
         eligible: inCharacterOverallRange(rule, overall),
         current: rule.id === currentCharacterId,
       }));
     for (const drawing of customDrawings) {
+      const displayName = (drawing.final_name || '').replace(/\s+preview$/i, '').trim().toLowerCase();
+      if (displayName === 'bay sniper') continue;
       const id = customCharacterId(drawing.id);
       options.push({
         id,
