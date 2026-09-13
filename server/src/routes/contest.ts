@@ -12,8 +12,8 @@ export const contestRouter = Router();
 const WEEKLY_VOTE_LIMIT = 30;
 const POPULAR_LIMIT = 28;
 const ALL_SUBMISSIONS_LIMIT = 80;
-const CONTEST_CARD_WIDTH = 320;
-const CONTEST_CARD_HEIGHT = 448;
+const CONTEST_CARD_WIDTH = 640;
+const CONTEST_CARD_HEIGHT = 896;
 const CONTEST_CARD_BG = '#fffefb';
 const CONTEST_DATA_URL_RE = /^data:image\/(?:png|jpe?g|webp);base64,[a-z0-9+/=]+$/i;
 

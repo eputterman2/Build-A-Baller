@@ -1202,7 +1202,12 @@ body {
   cursor: pointer;
 }
 .contest-entry-card.is-clickable:hover {
+  transform: none;
+}
+.contest-entry-card.is-clickable:hover .contest-entry-art,
+.contest-entry-card.is-clickable:focus-visible .contest-entry-art {
   transform: translate(-2px, -2px);
+  box-shadow: 4px 4px 0 rgba(22,24,29,.8);
 }
 .contest-entry-card.is-clickable:focus-visible {
   outline: 3px solid var(--blue);
@@ -1212,7 +1217,7 @@ body {
   box-sizing: border-box; position: relative; display: grid; place-items: center;
   width: min(170px, 100%); aspect-ratio: 5 / 7; height: auto;
   background: var(--ink); border: 3px solid var(--ink); border-radius: 13px; overflow: hidden;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm); transition: transform .1s ease, box-shadow .1s ease;
 }
 .contest-entry-art img {
   position: absolute; inset: -3px; display: block;
@@ -1748,7 +1753,7 @@ body {
   .prizes-page {
     width: 848px;
     max-width: none;
-    zoom: .5;
+    zoom: .46;
   }
   .prizes-page-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1837,7 +1842,7 @@ body {
   .prize-details-page {
     width: 848px;
     max-width: none;
-    zoom: .5;
+    zoom: .46;
   }
   .contest-submit-band {
     grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
@@ -1859,10 +1864,57 @@ body {
   .leaderboard {
     width: 848px;
     max-width: none;
-    zoom: .5;
+    zoom: .42;
+    margin-left: auto;
+    margin-right: auto;
   }
   .leaderboard .sports-card-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .leaderboard .player-of-day-leaderboard {
+    max-width: 720px;
+    margin-top: 66px;
+    margin-bottom: 22px;
+  }
+  .leaderboard .player-of-day-leaderboard .results-title {
+    font-size: 44px;
+    margin-bottom: 14px;
+  }
+  .leaderboard .player-of-day-leader-head {
+    padding: 10px 14px;
+    font-size: 15px;
+  }
+  .leaderboard .player-of-day-leader-row {
+    min-height: 64px;
+    padding: 10px 14px;
+  }
+  .leaderboard .player-of-day-leader-row b { font-size: 24px; }
+  .leaderboard .player-of-day-leader-row strong { font-size: 32px; }
+  .leaderboard .player-of-day-leaderboard:last-child {
+    margin-bottom: 0;
+  }
+  .main:has(.prizes-page),
+  .main:has(.prize-details-page),
+  .main:has(.leaderboard) {
+    padding-bottom: 24px;
+  }
+  .main:has(.prizes-page) {
+    padding-bottom: 0;
+  }
+  .main:has(.prizes-page) + .site-footer {
+    margin-top: 10px;
+  }
+  .main:has(.prize-details-page) {
+    padding-bottom: 0;
+  }
+  .main:has(.prize-details-page) + .site-footer {
+    margin-top: 10px;
+  }
+  .main:has(.leaderboard) {
+    padding-bottom: 0;
+  }
+  .main:has(.leaderboard) + .site-footer {
+    margin-top: 18px;
   }
 }
 .feedback-section {
@@ -3882,6 +3934,34 @@ button.drawing-collection-item:focus-visible {
   .contest-expanded-modal {
     --contest-expanded-scale: 1;
     padding: 64px 18px 18px;
+  }
+}
+@media (max-width: 620px) {
+  /* The contest page is desktop-scaled on phones, so keep the expanded editor's
+     two-column canvas and controls together before that scale is applied. */
+  .prize-details-page .contest-expanded-modal {
+    --contest-expanded-scale: 1.45;
+    width: max-content;
+    max-width: none;
+    max-height: none;
+  }
+  .prize-details-page .contest-expanded-draw-modal {
+    min-width: calc(486px * var(--contest-expanded-scale));
+  }
+  .prize-details-page .contest-expanded-rules-modal {
+    min-width: calc(280px * var(--contest-expanded-scale));
+  }
+  .prize-details-page .contest-expanded-modal .contest-drawing-tool {
+    max-width: none;
+  }
+  .prize-details-page .contest-card-preview-modal {
+    width: max-content;
+    max-width: none;
+    flex: 0 0 auto;
+  }
+  .prize-details-page .contest-expanded-entry-art {
+    flex: 0 0 auto;
+    width: 500px;
   }
 }
 .form-error { color: var(--red); font-size: 16px; }
