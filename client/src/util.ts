@@ -100,6 +100,25 @@ async function inlineExportImages(root: HTMLElement): Promise<() => void> {
     const src = img.currentSrc || img.src;
     if (!src || src.startsWith('data:')) return;
 
+    // Same-origin assets can be captured directly. Waiting for them to decode
+    // avoids swapping the live card image, which causes a visible blink.
+    if (new URL(src, window.location.href).origin === window.location.origin) {
+      if (!img.complete) {
+        await withTimeout(new Promise<void>((resolve, reject) => {
+          const onLoad = () => { cleanup(); resolve(); };
+          const onError = () => { cleanup(); reject(new Error('Image failed to load')); };
+          const cleanup = () => {
+            img.removeEventListener('load', onLoad);
+            img.removeEventListener('error', onError);
+          };
+          img.addEventListener('load', onLoad, { once: true });
+          img.addEventListener('error', onError, { once: true });
+        }), 4500, 'Image load timed out').catch(() => {});
+      }
+      await withTimeout(img.decode().catch(() => {}), 1200, 'Image decode timed out').catch(() => {});
+      return;
+    }
+
     const previousSrc = img.getAttribute('src');
     const previousSrcset = img.getAttribute('srcset');
     try {

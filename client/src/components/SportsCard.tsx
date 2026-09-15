@@ -117,7 +117,13 @@ export function SportsCard({
       >
         <div className="sports-card-inner">
           <div className={`sports-card-face sports-card-front${cardFrame ? ` has-card-frame card-frame-${cardFrame.id}` : ''}${cardBanner ? ' has-card-banner' : ''}`}>
-            {cardBanner && <img className="card-banner-art" src={cardBanner.src} alt="" />}
+            {cardBanner && (
+              <img
+                className={`card-banner-art card-banner-${cardBanner.id}`}
+                src={cardBanner.src}
+                alt=""
+              />
+            )}
             <div className="card-overall">
               <span>{build.overall}</span>
               <small>OVR</small>

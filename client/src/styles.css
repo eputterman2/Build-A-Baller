@@ -284,7 +284,10 @@ body {
     border-width: 4px;
     border-radius: 16px;
     flex: 0 0 auto;
-    transform: translate(0, 46px);
+    transform: translateY(37px);
+    position: relative;
+    z-index: 1;
+    white-space: nowrap;
   }
   .player-of-day:not(.player-of-day-compact) .pod-card .card-back-grade b { font-size: 52px; }
   .player-of-day:not(.player-of-day-compact) .pod-card .card-back-grade span { font-size: 26px; }
@@ -482,20 +485,29 @@ body {
   }
   .new-player-card { width: 100%; justify-self: stretch; }
   .new-drawing-card-back {
-    gap: 3px;
-    padding: 7px 5px;
+    gap: 2px;
+    min-width: 0;
+    padding: 5px 3px;
   }
-  .new-drawing-back-kicker { font-size: 11px; }
+  .new-drawing-back-kicker {
+    max-width: 100%;
+    font-size: 9px;
+    line-height: 1;
+  }
   .new-drawing-card-back b {
-    font-size: 19px;
-    line-height: .95;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 16px;
+    line-height: 1;
     overflow-wrap: normal;
     word-break: normal;
   }
   .new-drawing-card-back span:last-child {
-    font-size: 13px;
-    line-height: 1;
-    overflow-wrap: normal;
+    max-width: 100%;
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.05;
+    overflow-wrap: break-word;
     word-break: normal;
   }
 }
@@ -1996,10 +2008,25 @@ body {
   }
   .leaderboard .player-of-day-leader-row b { font-size: 24px; }
   .leaderboard .player-of-day-leader-row strong { font-size: 32px; }
+  .leaderboard .global-leaderboard-results .card-player-art {
+    bottom: 96px;
+  }
   .leaderboard .sports-card-back { padding-bottom: 14px; }
+  .leaderboard .sports-card-back {
+    display: grid;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+    align-content: stretch;
+  }
   .leaderboard .card-analysis-mini {
+    align-self: stretch;
     gap: 6px;
     margin-bottom: 0;
+    min-height: 0;
+    overflow: hidden;
+  }
+  .leaderboard .card-analysis-mini > div {
+    min-width: 0;
+    overflow: hidden;
   }
   .leaderboard .card-analysis-mini h4 { font-size: 12px; }
   .leaderboard .card-analysis-mini ul { gap: 1px; margin-top: 2px; }
@@ -2009,7 +2036,7 @@ body {
     font-size: 13px;
     line-height: 1;
   }
-  .leaderboard .card-full-stats { margin-bottom: 0; }
+  .leaderboard .card-full-stats { margin: 0 auto; }
   .leaderboard .player-of-day-leaderboard:last-child {
     margin-bottom: 0;
   }
@@ -3054,6 +3081,14 @@ button.drawing-collection-item:focus-visible {
   object-fit: contain; object-position: top right; pointer-events: none;
   filter: drop-shadow(2px 2px 0 rgba(22,24,29,.2));
 }
+.card-banner-art.card-banner-christmas-banner-striped {
+  transform: scale(1.02);
+  transform-origin: top right;
+}
+.card-banner-art.card-banner-login-streak-banner-lebron {
+  transform: scale(.925);
+  transform-origin: top right;
+}
 .pod-card .card-banner-art {
   top: -1%; right: calc(-3% + 4px); width: clamp(54px, 37%, 78px); height: clamp(48px, 33%, 70px);
 }
@@ -3099,6 +3134,24 @@ button.drawing-collection-item:focus-visible {
 .sports-card-front.has-card-frame .card-shine { display: none; }
 .sports-card-back {
   transform: rotateY(180deg); background: #fffdf7; padding: 14px 14px 20px; display: flex; flex-direction: column; gap: 9px;
+}
+.leaderboard .sports-card-back {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr) auto;
+  align-content: stretch;
+}
+.leaderboard .card-analysis-mini {
+  align-self: stretch;
+  min-height: 0;
+  margin-bottom: 0;
+  overflow: hidden;
+}
+.leaderboard .card-analysis-mini > div {
+  min-width: 0;
+  overflow: hidden;
+}
+.leaderboard .card-full-stats {
+  margin: 0 auto;
 }
 .card-back-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; border-bottom: 2px solid var(--ink); padding-bottom: 7px; }
 .card-back-user { color: var(--muted); font-size: 15px; line-height: 1; }
