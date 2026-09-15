@@ -2,6 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { config } from '../env';
 import { query } from '../db';
+import { isUsefulFeedback, summarizeFeedback } from '../feedbackSummary';
 
 export const analyticsRouter = Router();
 
@@ -9,6 +10,7 @@ interface FeedbackRow {
   id: string;
   username: string;
   message: string;
+  summary: string;
   word_count: string;
   created_at: string;
 }
@@ -99,10 +101,11 @@ analyticsRouter.get('/admin', async (req, res, next) => {
          LIMIT 25`,
       ),
       query<FeedbackRow>(
-        `SELECT id, username, message, word_count::text, created_at
+        `SELECT id, username, message, summary, word_count::text, created_at
          FROM feedback_messages
+         WHERE admin_hidden = FALSE
          ORDER BY created_at DESC
-         LIMIT 100`,
+         LIMIT 500`,
       ),
     ]);
 
@@ -125,13 +128,16 @@ analyticsRouter.get('/admin', async (req, res, next) => {
         lastSeenAt: issue.last_seen_at,
       })),
       issuesWindow: 'Last 7 days',
-      feedback: feedback.rows.map(item => ({
-        id: item.id,
-        username: item.username,
-        message: item.message,
-        wordCount: Number(item.word_count),
-        createdAt: item.created_at,
-      })),
+      feedback: feedback.rows
+        .filter(item => isUsefulFeedback(item.message) || Boolean(item.summary))
+        .map(item => ({
+          id: item.id,
+          username: item.username,
+          message: item.message,
+          summary: item.summary || summarizeFeedback(item.message),
+          wordCount: Number(item.word_count),
+          createdAt: item.created_at,
+        })),
     });
   } catch (err) { next(err); }
 });

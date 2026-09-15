@@ -26,7 +26,7 @@ export const buildsRouter = Router();
 const GLOBAL_LEADERBOARD_LIMIT = 100;
 const GLOBAL_TIER_LEADERBOARD_LIMIT = 9;
 const GLOBAL_CARDS_PER_USER = 3;
-const COLLECTION_LIMIT = 50;
+const COLLECTION_LIMIT = 100;
 const PLAYER_OF_DAY_WIN_CARD_LIMIT = 30;
 
 const attrKeys = ATTRIBUTES.map(a => a.key) as [AttributeKey, ...AttributeKey[]];
@@ -504,7 +504,7 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-// Top builds across all players.
+// Best or worst saved builds across all players.
 buildsRouter.get('/leaderboard', async (req, res, next) => {
   try {
     const limit = Math.min(
@@ -515,6 +515,13 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
     const rawMaxOverall = typeof req.query.maxOverall === 'string' ? Number(req.query.maxOverall) : NaN;
     const minOverall = Number.isFinite(rawMinOverall) ? rawMinOverall : 0;
     const maxOverall = Number.isFinite(rawMaxOverall) ? rawMaxOverall : 99;
+    const isWorst = req.query.sort === 'worst';
+    const userRankingOrder = isWorst
+      ? 'b.overall ASC, b.total_stats ASC, b.hall_of_fame_count ASC, b.all_star_count ASC, b.created_at ASC'
+      : 'b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at DESC';
+    const boardRankingOrder = isWorst
+      ? 'ur.overall ASC, ur.total_stats ASC, ur.hall_of_fame_count ASC, ur.all_star_count ASC, ur.created_at ASC'
+      : 'ur.overall DESC, ur.total_stats DESC, ur.hall_of_fame_count DESC, ur.all_star_count DESC, ur.created_at DESC';
     const result = await query<BuildRow>(
       `WITH user_ranked AS (
 	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
@@ -523,7 +530,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
                 b.total_stats, b.hall_of_fame_count, b.all_star_count,
                 ROW_NUMBER() OVER (
                   PARTITION BY b.user_id
-                  ORDER BY b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at DESC
+                  ORDER BY ${userRankingOrder}
                 ) AS user_place
          FROM builds b JOIN users u ON u.id = b.user_id
          WHERE b.overall >= $3
@@ -535,7 +542,7 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
               ${originalOwnerDrawingSql('ur')}
        FROM user_ranked ur
        WHERE ur.user_place <= $2
-       ORDER BY ur.overall DESC, ur.total_stats DESC, ur.hall_of_fame_count DESC, ur.all_star_count DESC, ur.created_at DESC
+       ORDER BY ${boardRankingOrder}
        LIMIT $1`,
       [limit, GLOBAL_CARDS_PER_USER, minOverall, maxOverall],
     );
@@ -595,8 +602,8 @@ buildsRouter.get('/mine', requireAuth, async (req, res, next) => {
               ${originalOwnerDrawingSql('b')}
        FROM builds b JOIN users u ON u.id = b.user_id
        WHERE b.user_id = $1
-       ORDER BY b.created_at DESC LIMIT 50`,
-      [req.user!.id],
+       ORDER BY b.created_at DESC LIMIT $2`,
+      [req.user!.id, COLLECTION_LIMIT],
     );
     res.json({ builds: result.rows.map(rowToSummary) });
   } catch (err) { next(err); }

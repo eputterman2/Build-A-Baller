@@ -155,10 +155,15 @@ CREATE TABLE IF NOT EXISTS feedback_messages (
   user_id      TEXT REFERENCES users(id) ON DELETE SET NULL,
   username     TEXT NOT NULL DEFAULT '',
   message      TEXT NOT NULL,
+  summary      TEXT NOT NULL DEFAULT '',
+  admin_hidden BOOLEAN NOT NULL DEFAULT FALSE,
   word_count   INTEGER NOT NULL,
   email_status TEXT NOT NULL DEFAULT 'pending',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+
+ALTER TABLE feedback_messages ADD COLUMN IF NOT EXISTS summary TEXT NOT NULL DEFAULT '';
+ALTER TABLE feedback_messages ADD COLUMN IF NOT EXISTS admin_hidden BOOLEAN NOT NULL DEFAULT FALSE;
 
 CREATE TABLE IF NOT EXISTS site_visit_days (
   visitor_id   TEXT NOT NULL,

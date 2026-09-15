@@ -127,6 +127,7 @@ export interface AdminAnalytics {
     id: string;
     username: string;
     message: string;
+    summary: string;
     wordCount: number;
     createdAt: string;
   }>;
@@ -152,11 +153,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ picks, identity, accessories, characterId }),
     }).then(d => d.build),
-  leaderboard: (options?: { limit?: number; minOverall?: number; maxOverall?: number }) => {
+  leaderboard: (options?: { limit?: number; minOverall?: number; maxOverall?: number; sort?: 'best' | 'worst' }) => {
     const params = new URLSearchParams();
     if (options?.limit) params.set('limit', String(options.limit));
     if (options?.minOverall != null) params.set('minOverall', String(options.minOverall));
     if (options?.maxOverall != null) params.set('maxOverall', String(options.maxOverall));
+    if (options?.sort === 'worst') params.set('sort', options.sort);
     const query = params.toString();
     return req<{ builds: BuildDetail[] }>(`/builds/leaderboard${query ? `?${query}` : ''}`).then(d => d.builds);
   },

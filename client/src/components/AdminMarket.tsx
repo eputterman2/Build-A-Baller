@@ -85,6 +85,7 @@ export function AdminMarket() {
   const [buildTypeIds, setBuildTypeIds] = useState<string[]>(['any']);
   const [drawingDataUrl, setDrawingDataUrl] = useState('');
   const [confirmation, setConfirmation] = useState<AdminConfirmation>(null);
+  const [showOlderFeedback, setShowOlderFeedback] = useState(false);
 
   const selectedDrawing = drawings.find(drawing => drawing.id === selectedDrawingId) ?? null;
   const isEditing = Boolean(selectedDrawing);
@@ -108,6 +109,7 @@ export function AdminMarket() {
       setPrizeCompletions(completions);
       setPlayerDrawingPoll(poll);
       setAnalytics(currentAnalytics);
+      setShowOlderFeedback(false);
       setPollOptionNames(poll.options.map(option => option.label));
       setPollResetConfirmation(false);
       setSelectedDrawingId(current => current && publishedDrawings.some(drawing => drawing.id === current)
@@ -380,22 +382,36 @@ export function AdminMarket() {
                     <span>User Feedback</span>
                     <h4>Recent Responses</h4>
                   </div>
-                  <small>{analytics.feedback.length.toLocaleString()} response{analytics.feedback.length === 1 ? '' : 's'}</small>
+                  <small>{analytics.feedback.length.toLocaleString()} response{analytics.feedback.length === 1 ? '' : 's'} · kept 50 days</small>
                 </div>
                 {analytics.feedback.length === 0 ? (
                   <div className="admin-empty-card">No feedback responses have been submitted yet.</div>
                 ) : (
                   <div className="admin-feedback-list" aria-label="Recent user feedback">
-                    {analytics.feedback.map(item => (
+                    {(showOlderFeedback ? analytics.feedback : analytics.feedback.slice(0, 5)).map(item => (
                       <article className="admin-feedback-entry" key={item.id}>
                         <div className="admin-feedback-entry-head">
                           <b>{item.username ? `@${item.username}` : 'Anonymous visitor'}</b>
                           <small>{formatDate(item.createdAt)}</small>
                         </div>
-                        <p>{item.message}</p>
+                        <p>{item.summary}</p>
+                        <details>
+                          <summary>View original response</summary>
+                          <p className="admin-feedback-original">{item.message}</p>
+                        </details>
                       </article>
                     ))}
                   </div>
+                )}
+                {analytics.feedback.length > 5 && (
+                  <button
+                    className="btn btn-ghost admin-feedback-toggle"
+                    type="button"
+                    aria-expanded={showOlderFeedback}
+                    onClick={() => setShowOlderFeedback(current => !current)}
+                  >
+                    {showOlderFeedback ? 'Show only 5 newest' : `Show older responses (${analytics.feedback.length - 5})`}
+                  </button>
                 )}
               </div>
             </section>

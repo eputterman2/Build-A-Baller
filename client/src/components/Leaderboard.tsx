@@ -9,13 +9,14 @@ const PLAYER_OF_DAY_PAGE_SIZE = 10;
 const DRAWING_LEADERS_PAGE_SIZE = 10;
 
 const GLOBAL_TIERS = [
-  { id: 'kryptonite', label: 'Kryptonite', min: 99, max: 99 },
-  { id: 'pink-diamond', label: 'Pink Diamond', min: 96, max: 98 },
-  { id: 'diamond', label: 'Diamond', min: 92, max: 95 },
-  { id: 'amethyst', label: 'Amethyst', min: 88, max: 91 },
-  { id: 'gold', label: 'Gold', min: 82, max: 87 },
-  { id: 'silver', label: 'Silver', min: 76, max: 81 },
-  { id: 'bronze', label: 'Bronze', min: 0, max: 75 },
+  { id: 'kryptonite', label: 'Kryptonite', min: 99, max: 99, sort: 'best' },
+  { id: 'pink-diamond', label: 'Pink Diamond', min: 96, max: 98, sort: 'best' },
+  { id: 'diamond', label: 'Diamond', min: 92, max: 95, sort: 'best' },
+  { id: 'amethyst', label: 'Amethyst', min: 88, max: 91, sort: 'best' },
+  { id: 'gold', label: 'Gold', min: 82, max: 87, sort: 'best' },
+  { id: 'silver', label: 'Silver', min: 76, max: 81, sort: 'best' },
+  { id: 'bronze', label: 'Bronze', min: 50, max: 75, sort: 'best' },
+  { id: 'worst', label: 'Worst Builds', min: 0, max: 49, sort: 'worst' },
 ] as const;
 
 type GlobalTierId = typeof GLOBAL_TIERS[number]['id'];
@@ -84,6 +85,30 @@ function Pagination({
   );
 }
 
+function GlobalTierTab({
+  tier,
+  selectedTier,
+  onSelect,
+}: {
+  tier: typeof GLOBAL_TIERS[number];
+  selectedTier: GlobalTierId;
+  onSelect: (tier: GlobalTierId) => void;
+}) {
+  return (
+    <button
+      aria-selected={tier.id === selectedTier}
+      className={`global-tier-tab overall-tier-${tier.id}${tier.id === selectedTier ? ' is-current' : ''}`}
+      onClick={() => onSelect(tier.id)}
+      role="tab"
+      type="button"
+    >
+      <span className="global-tier-swatch" aria-hidden="true" />
+      <span>{tier.label}</span>
+      <small>{tier.min === tier.max ? tier.max : `${tier.min}-${tier.max}`}</small>
+    </button>
+  );
+}
+
 export function Leaderboard() {
   const [builds, setBuilds] = useState<BuildDetail[] | null>(null);
   const [playerOfDayLeaders, setPlayerOfDayLeaders] = useState<PlayerOfDayLeader[] | null>(null);
@@ -109,7 +134,12 @@ export function Leaderboard() {
     let alive = true;
     const tier = GLOBAL_TIERS.find(item => item.id === selectedTier) ?? GLOBAL_TIERS[0];
     setGlobalLoading(true);
-    api.leaderboard({ limit: GLOBAL_TIER_SIZE, minOverall: tier.min, maxOverall: tier.max })
+    api.leaderboard({
+      limit: GLOBAL_TIER_SIZE,
+      minOverall: tier.min,
+      maxOverall: tier.max,
+      sort: tier.sort,
+    })
       .then(globalBuilds => {
         if (alive) setBuilds(globalBuilds);
       })
@@ -155,6 +185,7 @@ export function Leaderboard() {
     }
   };
   const selectedTierDetails = GLOBAL_TIERS.find(tier => tier.id === selectedTier) ?? GLOBAL_TIERS[0];
+  const isWorstTier = selectedTierDetails.sort === 'worst';
   const globalBoardBusy = globalLoading && builds.length > 0;
   const leaderPageCount = Math.ceil(playerOfDayLeaders.length / PLAYER_OF_DAY_PAGE_SIZE);
   const leaderPageStart = (leaderPage - 1) * PLAYER_OF_DAY_PAGE_SIZE;
@@ -173,12 +204,12 @@ export function Leaderboard() {
     <div className="leaderboard">
       <h2 className="results-title">Global Leaderboard</h2>
       <div className="leaderboard-rank-note">
-        <p>Ranked within each tier by:</p>
+        <p>{isWorstTier ? 'Worst builds ranked by (lowest first):' : 'Ranked within each tier by:'}</p>
         <ol>
-          <li>Overall</li>
-          <li>Total stats</li>
-          <li>Hall of Famers drafted</li>
-          <li>All-Stars drafted</li>
+          <li>{isWorstTier ? 'Lowest overall' : 'Overall'}</li>
+          <li>{isWorstTier ? 'Fewest total stats' : 'Total stats'}</li>
+          <li>{isWorstTier ? 'Fewest Hall of Famers drafted' : 'Hall of Famers drafted'}</li>
+          <li>{isWorstTier ? 'Fewest All-Stars drafted' : 'All-Stars drafted'}</li>
         </ol>
       </div>
       <div className={`global-leaderboard-results${globalBoardBusy ? ' is-loading' : ''}`} aria-busy={globalLoading}>
@@ -188,7 +219,12 @@ export function Leaderboard() {
           <div className="sports-card-grid">
             {builds.map((b, i) => (
               <div className="leaderboard-card-cell" key={b.id}>
-                <SportsCard build={b} rank={i + 1} />
+                <SportsCard
+                  build={b}
+                  rank={i + 1}
+                  cardTierOverride={isWorstTier ? 'worst' : undefined}
+                  rankTierOverride={isWorstTier ? 'worst' : undefined}
+                />
                 <div className="card-export-actions">
                   <button className="btn btn-small share-card-btn" onClick={() => shareBuild(b)}>
                     {shareStatus?.id === b.id ? shareStatus.label : 'Share'}
@@ -203,20 +239,14 @@ export function Leaderboard() {
         )}
       </div>
       <div className="global-tier-tabs" aria-label="Global leaderboard tiers" role="tablist">
-        {GLOBAL_TIERS.map(tier => (
-          <button
-            aria-selected={tier.id === selectedTier}
-            className={`global-tier-tab overall-tier-${tier.id}${tier.id === selectedTier ? ' is-current' : ''}`}
-            key={tier.id}
-            onClick={() => setSelectedTier(tier.id)}
-            role="tab"
-            type="button"
-          >
-            <span className="global-tier-swatch" aria-hidden="true" />
-            <span>{tier.label}</span>
-            <small>{tier.min === tier.max ? tier.max : `${tier.min}-${tier.max}`}</small>
-          </button>
+        {GLOBAL_TIERS.slice(0, -4).map(tier => (
+          <GlobalTierTab key={tier.id} tier={tier} selectedTier={selectedTier} onSelect={setSelectedTier} />
         ))}
+        <div className="global-tier-bottom-row">
+          {GLOBAL_TIERS.slice(-4).map(tier => (
+            <GlobalTierTab key={tier.id} tier={tier} selectedTier={selectedTier} onSelect={setSelectedTier} />
+          ))}
+        </div>
       </div>
       <section className="player-of-day-leaderboard">
         <h2 className="results-title">Player of the Day Leaders</h2>

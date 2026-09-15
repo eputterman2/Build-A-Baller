@@ -14,6 +14,8 @@ interface SportsCardProps {
   viewLabel?: string;
   metaActions?: ReactNode;
   hideBackAnalysis?: boolean;
+  cardTierOverride?: string;
+  rankTierOverride?: string;
 }
 
 const flagSrc = (file: string) =>
@@ -42,6 +44,8 @@ export function SportsCard({
   viewLabel = 'view',
   metaActions,
   hideBackAnalysis = false,
+  cardTierOverride,
+  rankTierOverride,
 }: SportsCardProps) {
   const [flipped, setFlipped] = useState(false);
   const grade = gradeFor(build.overall);
@@ -61,8 +65,8 @@ export function SportsCard({
   const userIcon = selectedAccessories?.userIconId ? ACCESSORIES_BY_ID[selectedAccessories.userIconId] : null;
   const cardFrame = selectedAccessories?.cardFrameId ? ACCESSORIES_BY_ID[selectedAccessories.cardFrameId] : null;
   const cardBanner = selectedAccessories?.cardBannerId ? ACCESSORIES_BY_ID[selectedAccessories.cardBannerId] : null;
-  const cardTier = isCustomCharacterId(build.characterId) ? 'onyx' : overallTier(build.overall);
-  const rankTier = overallTier(build.overall);
+  const cardTier = cardTierOverride ?? (isCustomCharacterId(build.characterId) ? 'onyx' : overallTier(build.overall));
+  const rankTier = rankTierOverride ?? overallTier(build.overall);
   const cardViewTo = viewTo ?? `/build/${build.id}`;
   const artCharacterId = artSrc === character.src ? character.id : fallbackCharacter.id;
   useEffect(() => {

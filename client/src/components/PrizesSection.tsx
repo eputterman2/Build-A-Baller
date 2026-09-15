@@ -352,6 +352,19 @@ function ContestDrawingTool({
     return canvas.toDataURL('image/png');
   };
 
+  const canvasHasDrawing = () => {
+    const canvas = canvasRef.current;
+    const ctx = context();
+    if (!canvas || !ctx) return false;
+    const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+    for (let index = 0; index < pixels.length; index += 4) {
+      if (pixels[index] !== 255 || pixels[index + 1] !== 254 || pixels[index + 2] !== 251 || pixels[index + 3] !== 255) {
+        return true;
+      }
+    }
+    return false;
+  };
+
   const handleExpandKey = (event: KeyboardEvent<HTMLElement>) => {
     if (!onExpand || (event.key !== 'Enter' && event.key !== ' ')) return;
     event.preventDefault();
@@ -364,6 +377,7 @@ function ContestDrawingTool({
   };
 
   const handleSubmit = () => {
+    if (!canvasHasDrawing()) return;
     const src = readCanvasSrc();
     if (!src) return;
     setPendingSubmitSrc(src);

@@ -143,6 +143,28 @@ async function normalizeContestCardDataUrl(dataUrl: string): Promise<string> {
   return `data:image/png;base64,${buffer.toString('base64')}`;
 }
 
+async function contestDataUrlHasDrawing(dataUrl: string): Promise<boolean> {
+  if (!CONTEST_DATA_URL_RE.test(dataUrl)) {
+    throw new Error('Upload a PNG, JPG, or WEBP drawing.');
+  }
+  const commaIndex = dataUrl.indexOf(',');
+  const input = Buffer.from(dataUrl.slice(commaIndex + 1), 'base64');
+  const { data } = await sharp(input, {
+    failOn: 'error',
+    limitInputPixels: 40_000_000,
+  })
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+
+  for (let index = 0; index < data.length; index += 4) {
+    if (data[index] !== 255 || data[index + 1] !== 254 || data[index + 2] !== 251 || data[index + 3] !== 255) {
+      return true;
+    }
+  }
+  return false;
+}
+
 async function contestRows(viewerUserId: string | null, key: string | null): Promise<ContestEntryRow[]> {
   const result = await query<ContestEntryRow>(
     `WITH vote_counts AS (
@@ -266,6 +288,17 @@ contestRouter.post('/entry', requireAuth, async (req, res, next) => {
   const client = await getPool().connect();
   try {
     const data = submitEntrySchema.parse(req.body);
+    let hasDrawing: boolean;
+    try {
+      hasDrawing = await contestDataUrlHasDrawing(data.drawingDataUrl);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message || 'The drawing could not be read.' });
+      return;
+    }
+    if (!hasDrawing) {
+      res.status(400).json({ error: 'Draw something on the card before submitting.' });
+      return;
+    }
     let normalizedDrawing: string;
     try {
       normalizedDrawing = await normalizeContestCardDataUrl(data.drawingDataUrl);

@@ -38,6 +38,10 @@ const ROSTER: RawC[] = [
   C('Bernie Sanders','F',72,165,74, 35,40, 48,55,40,50,88, 82,84,60,64),        // believes in passing the ball
   C('Serena Williams','F',69,165,76, 95,88, 64,66,82,84,66, 84,88,95,88),       // elite athlete & competitor
   C('Alex Morgan','F',67,137,72, 92,94, 80,64,56,78,80, 84,86,90,84),
+  C('Usain Bolt','G',77,207,84, 99,100, 62,54,48,70,58, 74,92,78,86),          // world-class burst and open-court speed
+  C('Simone Biles','G',56,104,60, 99,88, 72,62,24,76,68, 88,98,92,84),          // elite balance and explosiveness in a tiny frame
+  C('Dwayne Johnson','F',77,260,84, 84,58, 46,42,88,82,54, 74,98,80,96),        // strength, durability, and pure physicality
+  C('Odell Beckham Jr.','G',71,200,76, 95,93, 76,70,50,68,72, 74,82,84,74),     // coordination, hands, and athletic burst
   // ---- Sitcom / cartoon characters ----
   C('Michael Scott','G',71,210,73, 40,42, 45,48,44,38,55, 30,72,40,70),         // bad at everything
   C('Jim Halpert','F',75,190,80, 80,78, 78,80,66,76,80, 82,86,82,84),           // the office athlete
@@ -45,6 +49,8 @@ const ROSTER: RawC[] = [
   C('Lisa Simpson','G',52,70,54, 50,60, 56,64,30,52,70, 96,90,66,66),
   C('Stuart Little','G',12,1,14, 62,78, 70,60,20,50,66, 72,90,78,60),           // a mouse
   C('Air Bud','F',48,70,52, 88,86, 60,82,58,70,45, 35,99,84,84),                // ain't no rule says a dog can't ball
+  C('Patrick Star','C',75,300,78, 25,20, 18,28,72,24,32, 12,76,22,99),           // tremendous durability, very little else
+  C('Luigi','G',76,175,80, 86,82, 74,68,54,76,70, 80,74,82,78),
   // ---- Superheroes & villains ----
   C('Spider-Man','G',70,167,82, 99,95, 92,72,68,90,80, 88,85,90,85),
   C('Batman','F',74,210,80, 88,82, 80,72,72,95,82, 99,82,95,85),
@@ -64,6 +70,9 @@ const ROSTER: RawC[] = [
   C('Venom','C',75,260,92, 90,80, 64,58,92,90,56, 60,35,80,95),                 // tendrils → freakish length
   C('Starfire','F',76,160,82, 92,90, 74,82,82,82,76, 78,92,88,90),
   C('Jean Grey','G',66,135,70, 70,72, 80,88,72,80,92, 88,76,82,80),             // telekinetic passing/shooting
+  C('Sonic','G',65,120,72, 100,100, 96,72,34,80,76, 78,90,88,84),               // unmatched speed and handle
+  C('Goku','F',74,180,84, 100,100, 92,74,96,99,82, 92,96,99,100),                // fictional ceiling for athleticism and durability
+  C('Korra','F',70,150,76, 92,86, 80,62,48,88,72, 82,96,90,92),                 // tough, versatile two-way forward
 ];
 
 export const CHARACTERS: Player[] = ROSTER

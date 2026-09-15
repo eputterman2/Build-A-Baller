@@ -9,7 +9,7 @@ import { authRouter } from './routes/auth';
 import { playersRouter } from './routes/players';
 import { buildsRouter } from './routes/builds';
 import { pollsRouter } from './routes/polls';
-import { feedbackRouter } from './routes/feedback';
+import { feedbackRouter, FEEDBACK_RETENTION_DAYS, purgeExpiredFeedback } from './routes/feedback';
 import { flagsRouter } from './routes/flags';
 import { marketRouter, stripeWebhookHandler } from './routes/market';
 import { contestRouter } from './routes/contest';
@@ -31,8 +31,15 @@ async function main(): Promise<void> {
   initPool(dbUrl);
   await waitForDb();
   await migrate();
+  await purgeExpiredFeedback();
   await backfillBuildRankMetrics();
   console.log('✅ Database ready');
+
+  const feedbackCleanupTimer = setInterval(() => {
+    void purgeExpiredFeedback().catch(err => console.error('Feedback cleanup failed:', err));
+  }, 24 * 60 * 60 * 1000);
+  feedbackCleanupTimer.unref();
+  console.log(`🧹 Feedback responses older than ${FEEDBACK_RETENTION_DAYS} days are removed automatically`);
 
   const app = express();
   app.use(cors({ origin: config.isProd ? true : config.clientOrigin }));

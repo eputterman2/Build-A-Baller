@@ -1899,18 +1899,21 @@ body {
     padding-bottom: 24px;
   }
   .main:has(.prizes-page) {
+    flex: 0 0 auto;
     padding-bottom: 0;
   }
   .main:has(.prizes-page) + .site-footer {
     margin-top: 10px;
   }
   .main:has(.prize-details-page) {
+    flex: 0 0 auto;
     padding-bottom: 0;
   }
   .main:has(.prize-details-page) + .site-footer {
     margin-top: 10px;
   }
   .main:has(.leaderboard) {
+    flex: 0 0 auto;
     padding-bottom: 0;
   }
   .main:has(.leaderboard) + .site-footer {
@@ -2394,6 +2397,9 @@ body {
   display: flex; justify-content: center; align-items: stretch; gap: 8px; flex-wrap: wrap;
   margin: 26px 0 0;
 }
+.global-tier-bottom-row {
+  flex: 0 0 100%; display: flex; justify-content: center; align-items: stretch; gap: 8px;
+}
 .global-tier-tab {
   min-width: 104px; display: grid; grid-template-columns: 18px 1fr; gap: 2px 7px; align-items: center;
   border: 2px solid var(--ink); border-radius: 10px; background: var(--card); color: var(--ink);
@@ -2408,6 +2414,17 @@ body {
 }
 .global-tier-tab.is-current {
   transform: translate(-1px, -1px); box-shadow: 4px 4px 0 rgba(22,24,29,.8);
+}
+.global-tier-tab.overall-tier-worst,
+.global-tier-tab.overall-tier-worst.is-current {
+  background: #fff;
+}
+.global-tier-tab.overall-tier-worst:hover,
+.global-tier-tab.overall-tier-worst.is-current:hover {
+  background: linear-gradient(145deg, var(--tier-start), var(--tier-mid) 58%, var(--tier-end));
+}
+.global-tier-tab.overall-tier-worst .global-tier-swatch {
+  background: linear-gradient(145deg, #b8d49b 0%, #e18b50 56%, #668c68 100%);
 }
 .global-tier-swatch {
   grid-row: 1 / span 2; width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 999px;
@@ -2743,6 +2760,15 @@ button.drawing-collection-item:focus-visible {
   --tier-line: rgba(24, 86, 41, .34);
   --tier-number: #2d9342;
   --tier-shine: rgba(225,255,188,.25);
+}
+.card-tier-worst, .overall-tier-worst {
+  --tier-spot: rgba(91, 141, 101, .4);
+  --tier-start: #e2edd0;
+  --tier-mid: #c88b62;
+  --tier-end: #71806c;
+  --tier-line: rgba(53, 87, 59, .56);
+  --tier-number: #8e5137;
+  --tier-shine: rgba(158, 190, 133, .3);
 }
 .sports-card-meta {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
@@ -3434,6 +3460,15 @@ button.drawing-collection-item:focus-visible {
 .admin-feedback-entry p {
   margin: 8px 0 0; color: var(--ink); font-size: 18px; line-height: 1.35; white-space: pre-wrap;
 }
+.admin-feedback-entry details { margin-top: 8px; }
+.admin-feedback-entry details summary {
+  color: var(--muted); cursor: pointer; font-size: 15px; font-weight: 700;
+}
+.admin-feedback-original {
+  padding-left: 12px; border-left: 2px solid rgba(22,24,29,.16); color: var(--muted) !important;
+  font-size: 15px !important;
+}
+.admin-feedback-toggle { justify-self: start; }
 .admin-analytics-issue {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: center;
   padding: 11px 13px; background: var(--card); border: 2.5px solid rgba(22,24,29,.16); border-radius: 9px;

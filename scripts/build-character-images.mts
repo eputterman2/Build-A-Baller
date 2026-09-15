@@ -13,6 +13,10 @@ const TITLE: Record<string,string[]> = {
   'bernie-sanders':['Bernie Sanders'],
   'serena-williams':['Serena Williams'],
   'alex-morgan':['Alex Morgan (soccer)'],
+  'usain-bolt':['Usain Bolt'],
+  'simone-biles':['Simone Biles'],
+  'dwayne-johnson':['Dwayne Johnson'],
+  'odell-beckham-jr':['Odell Beckham Jr.'],
   'michael-scott':['Michael Scott (The Office)'],
   'jim-halpert':['Jim Halpert'],
   'charlie-kelly':["Charlie Kelly (It's Always Sunny in Philadelphia)"],
@@ -20,6 +24,8 @@ const TITLE: Record<string,string[]> = {
   'lisa-simpson':['Lisa Simpson'],
   'stuart-little':['Stuart Little'],
   'air-bud':['Air Bud'],
+  'patrick-star':['Patrick Star'],
+  'luigi':['Luigi (Nintendo character)','Luigi'],
   'spider-man':['Spider-Man'],
   'batman':['Batman'],
   'wonder-woman':['Wonder Woman'],
@@ -38,6 +44,9 @@ const TITLE: Record<string,string[]> = {
   'venom':['Venom (character)','Venom (Marvel Comics character)'],
   'starfire':['Starfire (Teen Titans)','Starfire (character)'],
   'jean-grey':['Jean Grey'],
+  'sonic':['Sonic the Hedgehog'],
+  'goku':['Goku'],
+  'korra':['Korra'],
 };
 async function rest(title:string){for(let a=0;a<3;a++){try{const r=await fetch('https://en.wikipedia.org/api/rest_v1/page/summary/'+encodeURIComponent(title.replace(/ /g,'_')),{headers:{'User-Agent':'BuildABaller/1.0 (hobby)'},signal:AbortSignal.timeout(9000)});if(r.status===429){await sleep(2500);continue;}if(!r.ok)return null;return await r.json();}catch{await sleep(700);}}return null;}
 async function img(slug:string,name:string){const titles=[...(TITLE[slug]||[]),name];for(const t of titles){const j:any=await rest(t);await sleep(130);if(j&&j.type!=='disambiguation'&&j.thumbnail?.source)return j.thumbnail.source;}return null;}
