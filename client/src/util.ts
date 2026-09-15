@@ -149,15 +149,18 @@ function lockContainedPlayerArt(root: HTMLElement): () => void {
   const images = [...root.querySelectorAll<HTMLImageElement>('.card-player-art')];
 
   images.forEach(img => {
-    const rect = img.getBoundingClientRect();
+    // Use layout pixels rather than getBoundingClientRect() pixels. The latter
+    // is already reduced by the mobile page zoom and would shrink the art.
+    const boxWidth = img.offsetWidth;
+    const boxHeight = img.offsetHeight;
     const naturalWidth = img.naturalWidth;
     const naturalHeight = img.naturalHeight;
-    if (!rect.width || !rect.height || !naturalWidth || !naturalHeight) return;
+    if (!boxWidth || !boxHeight || !naturalWidth || !naturalHeight) return;
 
-    const boxAspect = rect.width / rect.height;
+    const boxAspect = boxWidth / boxHeight;
     const imageAspect = naturalWidth / naturalHeight;
-    const width = imageAspect > boxAspect ? rect.width : rect.height * imageAspect;
-    const height = imageAspect > boxAspect ? rect.width / imageAspect : rect.height;
+    const width = imageAspect > boxAspect ? boxWidth : boxHeight * imageAspect;
+    const height = imageAspect > boxAspect ? boxWidth / imageAspect : boxHeight;
 
     const previousWidth = img.style.width;
     const previousHeight = img.style.height;
@@ -190,29 +193,37 @@ function lockContainedPlayerArt(root: HTMLElement): () => void {
 
 export async function downloadCardImage(cardId: string, fileName: string): Promise<void> {
   const wrap = document.querySelector<HTMLElement>(`[data-card-id="${cardId}"]`);
-  const inner = wrap?.querySelector<HTMLElement>('.sports-card-inner');
   const front = wrap?.querySelector<HTMLElement>('.sports-card-front');
-  if (!wrap || !inner || !front) throw new Error('Card not found');
+  if (!wrap || !front) throw new Error('Card not found');
 
-  const wasFlipped = wrap.classList.contains('flipped');
-  const previousTransition = inner.style.transition;
-  const previousBackface = front.style.backfaceVisibility;
-  const previousWebkitBackface = front.style.webkitBackfaceVisibility;
-  const previousTransform = front.style.transform;
+  const exportStage = document.createElement('div');
+  const exportFront = front.cloneNode(true) as HTMLElement;
+  exportStage.setAttribute('aria-hidden', 'true');
+  exportStage.style.position = 'absolute';
+  exportStage.style.left = '-100000px';
+  exportStage.style.top = '0';
+  exportStage.style.width = `${front.offsetWidth}px`;
+  exportStage.style.height = `${front.offsetHeight}px`;
+  exportStage.style.pointerEvents = 'none';
+  exportStage.style.overflow = 'visible';
+  exportFront.style.position = 'relative';
+  exportFront.style.inset = 'auto';
+  exportFront.style.width = '100%';
+  exportFront.style.height = '100%';
+  exportFront.style.transform = 'none';
+  exportFront.style.backfaceVisibility = 'visible';
+  exportFront.style.webkitBackfaceVisibility = 'visible';
+  exportStage.appendChild(exportFront);
+  wrap.appendChild(exportStage);
+
   let restoreImages = () => {};
   let restorePlayerArt = () => {};
   try {
-    inner.style.transition = 'none';
-    front.style.backfaceVisibility = 'visible';
-    front.style.webkitBackfaceVisibility = 'visible';
-    front.style.transform = 'none';
-    if (wasFlipped) wrap.classList.remove('flipped');
-
-    restoreImages = await inlineExportImages(front);
-    restorePlayerArt = lockContainedPlayerArt(front);
+    restoreImages = await inlineExportImages(exportFront);
+    restorePlayerArt = lockContainedPlayerArt(exportFront);
     await new Promise(requestAnimationFrame);
     const canvas = await withTimeout(
-      html2canvas(front, {
+      html2canvas(exportFront, {
         backgroundColor: null,
         scale: 3,
         useCORS: true,
@@ -244,12 +255,8 @@ export async function downloadCardImage(cardId: string, fileName: string): Promi
     link.click();
     window.setTimeout(() => URL.revokeObjectURL(url), 1000);
   } finally {
-    if (wasFlipped) wrap.classList.add('flipped');
-    inner.style.transition = previousTransition;
-    front.style.backfaceVisibility = previousBackface;
-    front.style.webkitBackfaceVisibility = previousWebkitBackface;
-    front.style.transform = previousTransform;
     restorePlayerArt();
     restoreImages();
+    exportStage.remove();
   }
 }

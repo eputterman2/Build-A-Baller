@@ -115,7 +115,11 @@ body {
   .hero-hand-drawn-pennant { top: 54%; width: 40%; }
   .hero-players { margin-bottom: -28px; }
   .tagline { margin-top: 0; margin-bottom: 14px; }
-  .home-prize-teaser { top: calc(100% + 29px); width: 92px; }
+  .home-prize-teaser {
+    top: calc(100% + 29px);
+    width: 92px;
+    transform: translate(calc(-50% + 9px), -5px) rotate(2deg);
+  }
 }
 .player-of-day {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 22px;
@@ -284,7 +288,8 @@ body {
     border-width: 4px;
     border-radius: 16px;
     flex: 0 0 auto;
-    transform: translateY(37px);
+    align-self: flex-end;
+    transform: none;
     position: relative;
     z-index: 1;
     white-space: nowrap;
@@ -485,19 +490,19 @@ body {
   }
   .new-player-card { width: 100%; justify-self: stretch; }
   .new-drawing-card-back {
-    gap: 2px;
+    gap: 1px;
     min-width: 0;
-    padding: 5px 3px;
+    padding: 4px 2px;
   }
   .new-drawing-back-kicker {
     max-width: 100%;
-    font-size: 9px;
+    font-size: 8px;
     line-height: 1;
   }
   .new-drawing-card-back b {
     max-width: 100%;
     min-width: 0;
-    font-size: 16px;
+    font-size: 14px;
     line-height: 1;
     overflow-wrap: normal;
     word-break: normal;
@@ -505,7 +510,7 @@ body {
   .new-drawing-card-back span:last-child {
     max-width: 100%;
     min-width: 0;
-    font-size: 11px;
+    font-size: 10px;
     line-height: 1.05;
     overflow-wrap: break-word;
     word-break: normal;
@@ -2011,32 +2016,6 @@ body {
   .leaderboard .global-leaderboard-results .card-player-art {
     bottom: 96px;
   }
-  .leaderboard .sports-card-back { padding-bottom: 14px; }
-  .leaderboard .sports-card-back {
-    display: grid;
-    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
-    align-content: stretch;
-  }
-  .leaderboard .card-analysis-mini {
-    align-self: stretch;
-    gap: 6px;
-    margin-bottom: 0;
-    min-height: 0;
-    overflow: hidden;
-  }
-  .leaderboard .card-analysis-mini > div {
-    min-width: 0;
-    overflow: hidden;
-  }
-  .leaderboard .card-analysis-mini h4 { font-size: 12px; }
-  .leaderboard .card-analysis-mini ul { gap: 1px; margin-top: 2px; }
-  .leaderboard .card-analysis-mini li {
-    grid-template-columns: 10px minmax(0, 1fr);
-    column-gap: 2px;
-    font-size: 13px;
-    line-height: 1;
-  }
-  .leaderboard .card-full-stats { margin: 0 auto; }
   .leaderboard .player-of-day-leaderboard:last-child {
     margin-bottom: 0;
   }
@@ -2065,6 +2044,52 @@ body {
   }
   .main:has(.leaderboard) + .site-footer {
     margin-top: 18px;
+  }
+
+  /* These pages keep their desktop composition; only the page itself is zoomed on phones. */
+  .prizes-page .lower-prize-card .prize-title-stack h3 {
+    font-size: 31px;
+  }
+  .prizes-page .lower-prize-card .prize-title-stack p {
+    font-size: 18px;
+  }
+  .prize-details-page {
+    width: 760px;
+    max-width: 760px;
+  }
+  .prize-details-page .contest-submit-band {
+    grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
+  }
+  .prize-details-page .contest-drawing-tool {
+    justify-self: start;
+    width: fit-content;
+  }
+  .prize-details-page .contest-section-head {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+  }
+  .prize-details-page .contest-top-grid,
+  .prize-details-page .contest-overview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .prize-details-page .contest-gallery-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .prize-details-page .contest-entry-art {
+    width: min(170px, 100%);
+  }
+  .prize-details-page .contest-page-arrow {
+    justify-self: center;
+  }
+  .prize-details-page .contest-rules-panel ul {
+    grid-template-columns: 1fr;
+  }
+  .prize-details-page .contest-tool-layout {
+    grid-template-columns: minmax(180px, 215px) minmax(185px, 230px);
+  }
+  .prize-details-page .contest-card-canvas-wrap {
+    justify-self: start;
   }
 }
 .feedback-section {
@@ -2791,7 +2816,7 @@ button.drawing-collection-item:focus-visible {
 .drawing-picker.compact .drawing-picker-head p { font-size: 14px; }
 .drawing-picker-scroll { position: relative; min-width: 0; }
 .drawing-picker.compact .drawing-picker-grid {
-  grid-template-columns: 1fr; max-height: 220px; overflow: auto; padding-right: 4px;
+  grid-template-columns: repeat(2, minmax(0, 1fr)); max-height: 220px; overflow: auto; padding-right: 4px;
 }
 .drawing-picker.compact .drawing-picker-option {
   grid-template-columns: 46px minmax(0, 1fr); min-height: 84px; padding: 9px 8px;
