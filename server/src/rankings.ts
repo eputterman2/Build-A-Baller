@@ -1,7 +1,7 @@
 import { buildRankMetrics, type PickMap, type ScoreResult } from '@shared/index';
 import { query } from './db';
 
-const RANK_METRICS_VERSION = 3;
+const RANK_METRICS_VERSION = 4;
 
 interface UnrankedBuild {
   id: string;
@@ -21,12 +21,14 @@ export async function backfillBuildRankMetrics(): Promise<void> {
     const metrics = buildRankMetrics(build.result, build.picks);
     await query(
       `UPDATE builds
-       SET total_stats = $1, hall_of_fame_count = $2, all_star_count = $3, rank_metrics_version = $4
-       WHERE id = $5`,
+       SET total_stats = $1, hall_of_fame_count = $2, all_star_count = $3,
+           benchwarmer_count = $4, rank_metrics_version = $5
+       WHERE id = $6`,
       [
         metrics.totalStats,
         metrics.hallOfFameCount,
         metrics.allStarCount,
+        metrics.benchwarmerCount,
         RANK_METRICS_VERSION,
         build.id,
       ],

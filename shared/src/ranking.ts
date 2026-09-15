@@ -5,6 +5,7 @@ import type { PickMap, RawValues, ScoreResult } from './types';
 
 const ALL_STAR_OVERALL = 78;
 const HALL_OF_FAME_OVERALL = 90;
+const BENCHWARMER_OVERALL = 55;
 
 const playerSoloOveralls = Object.values(PLAYERS_BY_ID).map(player => {
   const values = Object.fromEntries(
@@ -25,10 +26,17 @@ const hallOfFamePlayerIds = new Set(
     .map(player => player.id),
 );
 
+const benchwarmerPlayerIds = new Set(
+  playerSoloOveralls
+    .filter(player => player.overall < BENCHWARMER_OVERALL)
+    .map(player => player.id),
+);
+
 export interface BuildRankMetrics {
   totalStats: number;
   hallOfFameCount: number;
   allStarCount: number;
+  benchwarmerCount: number;
 }
 
 export function buildRankMetrics(result: ScoreResult, picks: PickMap): BuildRankMetrics {
@@ -39,5 +47,6 @@ export function buildRankMetrics(result: ScoreResult, picks: PickMap): BuildRank
     ),
     hallOfFameCount: Object.values(picks).filter(playerId => hallOfFamePlayerIds.has(playerId)).length,
     allStarCount: Object.values(picks).filter(playerId => allStarPlayerIds.has(playerId)).length,
+    benchwarmerCount: Object.values(picks).filter(playerId => benchwarmerPlayerIds.has(playerId)).length,
   };
 }

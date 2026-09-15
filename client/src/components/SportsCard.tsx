@@ -50,6 +50,7 @@ export function SportsCard({
   const [flipped, setFlipped] = useState(false);
   const grade = gradeFor(build.overall);
   const archetype = buildArchetype(build.result);
+  const archetypeTitleClass = archetype.length > 19 ? ' card-back-title-long' : '';
   const character = resolveArchetypeCharacter(build.result, build.picks, build.characterId);
   const fallbackCharacter = resolveArchetypeCharacter(build.result, build.picks, null);
   const [artSrc, setArtSrc] = useState(character.src);
@@ -155,7 +156,7 @@ export function SportsCard({
             <div className="card-back-head">
               <div>
                 <span className="card-back-user">@{build.username}</span>
-                <h3>{archetype}</h3>
+                <h3 className={archetypeTitleClass}>{archetype}</h3>
               </div>
               <div className="card-back-grade">
                 <b>{grade.g}</b>

@@ -204,12 +204,12 @@ export function Leaderboard() {
     <div className="leaderboard">
       <h2 className="results-title">Global Leaderboard</h2>
       <div className="leaderboard-rank-note">
-        <p>{isWorstTier ? 'Worst builds ranked by (lowest first):' : 'Ranked within each tier by:'}</p>
+        <p>{isWorstTier ? 'Worst builds ranked by:' : 'Ranked within each tier by:'}</p>
         <ol>
           <li>{isWorstTier ? 'Lowest overall' : 'Overall'}</li>
           <li>{isWorstTier ? 'Fewest total stats' : 'Total stats'}</li>
-          <li>{isWorstTier ? 'Fewest Hall of Famers drafted' : 'Hall of Famers drafted'}</li>
-          <li>{isWorstTier ? 'Fewest All-Stars drafted' : 'All-Stars drafted'}</li>
+          <li>{isWorstTier ? 'Highest injury risk' : 'Hall of Famers drafted'}</li>
+          <li>{isWorstTier ? 'Benchwarmers drafted' : 'All-Stars drafted'}</li>
         </ol>
       </div>
       <div className={`global-leaderboard-results${globalBoardBusy ? ' is-loading' : ''}`} aria-busy={globalLoading}>

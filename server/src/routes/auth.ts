@@ -41,7 +41,7 @@ const resetPasswordSchema = z.object({
 });
 
 async function sendPasswordResetEmail(to: string, resetUrl: string): Promise<'sent' | 'not_configured' | 'failed'> {
-  if (!config.resendApiKey) return 'not_configured';
+  if (!config.resendApiKey || !config.feedbackFrom) return 'not_configured';
 
   try {
     const response = await fetch('https://api.resend.com/emails', {
@@ -89,6 +89,10 @@ authRouter.post('/login', async (req, res, next) => {
 authRouter.post('/forgot-password', async (req, res, next) => {
   try {
     const { email } = forgotPasswordSchema.parse(req.body);
+    if (config.isProd && (!config.resendApiKey || !config.feedbackFrom)) {
+      res.status(503).json({ error: 'Password recovery email is not configured yet. Please contact support.' });
+      return;
+    }
     const reset = await requestPasswordReset(email);
     let resetUrl = '';
     let emailStatus: 'sent' | 'not_configured' | 'failed' | 'no_account' = 'no_account';
@@ -96,6 +100,11 @@ authRouter.post('/forgot-password', async (req, res, next) => {
     if (reset) {
       resetUrl = `${config.clientOrigin}/reset-password?token=${encodeURIComponent(reset.token)}`;
       emailStatus = await sendPasswordResetEmail(reset.email, resetUrl);
+    }
+
+    if (config.isProd && reset && emailStatus !== 'sent') {
+      res.status(503).json({ error: 'The password recovery email could not be sent. Please try again or contact support.' });
+      return;
     }
 
     res.json({

@@ -478,13 +478,14 @@ buildsRouter.post('/', requireAuth, async (req, res, next) => {
       `INSERT INTO builds
          (id, user_id, overall, grade, grade_label, player_name, motto, country,
           user_icon_id, card_frame_id, card_banner_id, character_id,
-          picks, result, total_stats, hall_of_fame_count, all_star_count, rank_metrics_version)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+          picks, result, total_stats, hall_of_fame_count, all_star_count, benchwarmer_count, rank_metrics_version)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
       [id, req.user!.id, result.overall, grade.g, grade.label,
        identity.playerName, identity.motto, identity.country,
        savedAccessories.userIconId, savedAccessories.cardFrameId, savedAccessories.cardBannerId, characterId,
        JSON.stringify(picks), JSON.stringify(result),
-       rankMetrics.totalStats, rankMetrics.hallOfFameCount, rankMetrics.allStarCount, RANK_METRICS_VERSION],
+       rankMetrics.totalStats, rankMetrics.hallOfFameCount, rankMetrics.allStarCount,
+       rankMetrics.benchwarmerCount, RANK_METRICS_VERSION],
     );
     await awardPlayerOfDayWinIfCurrentTop(id);
     const originalOwnerDrawing = await isOriginalOwnerDrawing(characterId, req.user!.id);
@@ -517,17 +518,17 @@ buildsRouter.get('/leaderboard', async (req, res, next) => {
     const maxOverall = Number.isFinite(rawMaxOverall) ? rawMaxOverall : 99;
     const isWorst = req.query.sort === 'worst';
     const userRankingOrder = isWorst
-      ? 'b.overall ASC, b.total_stats ASC, b.hall_of_fame_count ASC, b.all_star_count ASC, b.created_at ASC'
+      ? "b.overall ASC, b.total_stats ASC, COALESCE((b.result->>'injuryRisk')::numeric, 0) DESC, b.benchwarmer_count DESC, b.created_at ASC"
       : 'b.overall DESC, b.total_stats DESC, b.hall_of_fame_count DESC, b.all_star_count DESC, b.created_at DESC';
     const boardRankingOrder = isWorst
-      ? 'ur.overall ASC, ur.total_stats ASC, ur.hall_of_fame_count ASC, ur.all_star_count ASC, ur.created_at ASC'
+      ? "ur.overall ASC, ur.total_stats ASC, COALESCE((ur.result->>'injuryRisk')::numeric, 0) DESC, ur.benchwarmer_count DESC, ur.created_at ASC"
       : 'ur.overall DESC, ur.total_stats DESC, ur.hall_of_fame_count DESC, ur.all_star_count DESC, ur.created_at DESC';
     const result = await query<BuildRow>(
       `WITH user_ranked AS (
 	         SELECT b.id, b.user_id, u.username, u.equipped_user_icon_id, b.overall, b.grade, b.grade_label, b.created_at,
                 b.player_name, b.motto, b.country, b.picks, b.result,
                 b.user_icon_id, b.card_frame_id, b.card_banner_id, b.character_id,
-                b.total_stats, b.hall_of_fame_count, b.all_star_count,
+                b.total_stats, b.hall_of_fame_count, b.all_star_count, b.benchwarmer_count,
                 ROW_NUMBER() OVER (
                   PARTITION BY b.user_id
                   ORDER BY ${userRankingOrder}

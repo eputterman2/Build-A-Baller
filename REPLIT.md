@@ -18,10 +18,10 @@ Before publishing, add these secrets in Replit:
   database is the best fit.
 - `JWT_SECRET`: a long random string for login tokens.
 - `ADMIN_SECRET`: a private code for the hidden `/admin/market` request queue.
-- `RESEND_API_KEY`: optional, but needed for the home-page feedback form to
-  email submissions. Without it, feedback is still saved in the database.
-- `FEEDBACK_FROM`: optional sender address for feedback emails. If omitted, the
-  app uses Resend's default onboarding sender.
+- `RESEND_API_KEY`: required for production password-recovery emails. Feedback
+  submissions are stored in the admin page only and are not emailed.
+- `FEEDBACK_FROM`: required sender address for Resend. Use an address on a
+  verified Resend domain in production.
 
 The app creates its tables automatically on startup.
 

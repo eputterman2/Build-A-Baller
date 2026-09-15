@@ -647,7 +647,7 @@ function ContestCardPreview({
     >
       <div className="contest-entry-art">
         {entry.src ? (
-          <img className="contest-submitted-card-image" src={entry.src} alt={`${entry.title} contest entry`} />
+          <ContestEntryImage src={entry.src} alt={`${entry.title} contest entry`} fallbackLabel={rank ? `#${rank}` : '?'} />
         ) : (
           <span>{rank ? `#${rank}` : '?'}</span>
         )}
@@ -669,6 +669,35 @@ function ContestCardPreview({
         <strong>{voteCountLabel(entry.votes)}</strong>
       </div>
     </article>
+  );
+}
+
+function ContestEntryImage({ src, alt, fallbackLabel }: { src: string; alt: string; fallbackLabel: string }) {
+  const [retry, setRetry] = useState(false);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setRetry(false);
+    setFailed(false);
+  }, [src]);
+
+  if (failed) {
+    return <span className="contest-entry-image-fallback" aria-label="Contest drawing unavailable">{fallbackLabel}</span>;
+  }
+
+  const retrySrc = retry ? `${src}${src.includes('?') ? '&' : '?'}retry=1` : src;
+  return (
+    <img
+      className="contest-submitted-card-image"
+      src={retrySrc}
+      alt={alt}
+      decoding="async"
+      loading="eager"
+      onError={() => {
+        if (!retry) setRetry(true);
+        else setFailed(true);
+      }}
+    />
   );
 }
 
@@ -1190,7 +1219,11 @@ export function PrizeDetailsPage() {
           >
             <div className={`contest-entry-art contest-expanded-entry-art${previewEntry.entry.src ? '' : ' is-empty-preview'}`}>
               {previewEntry.entry.src ? (
-                <img className="contest-submitted-card-image" src={previewEntry.entry.src} alt={`${previewEntry.entry.title} contest entry`} />
+                <ContestEntryImage
+                  src={previewEntry.entry.src}
+                  alt={`${previewEntry.entry.title} contest entry`}
+                  fallbackLabel={previewEntry.rank ? `#${previewEntry.rank}` : '?'}
+                />
               ) : (
                 <span className={previewEntry.rank ? undefined : 'contest-expanded-question-marker'}>
                   {previewEntry.rank ? `#${previewEntry.rank}` : '?'}

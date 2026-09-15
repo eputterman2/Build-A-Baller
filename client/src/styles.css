@@ -241,6 +241,68 @@ body {
   .pod-winner-title { font-size: 43px !important; margin-bottom: 10px !important; max-width: 100%; }
   .pod-winner-copy { justify-items: center; }
   .pod-card { width: min(100%, 230px); }
+  .player-of-day:not(.player-of-day-compact) .pod-card .sports-card-back {
+    width: 380px;
+    height: 100%;
+    right: auto;
+    bottom: auto;
+    zoom: .605263;
+    border-width: 5px;
+    padding: 28px 28px 40px;
+    gap: 18px;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-head {
+    gap: 20px;
+    border-bottom-width: 4px;
+    padding-bottom: 14px;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-head > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
+    text-align: left;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-user {
+    display: block;
+    font-size: 30px;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-head h3 {
+    font-size: 51px;
+    margin-top: 6px;
+    overflow-wrap: normal;
+    word-break: normal;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    overflow: hidden;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-head h3.card-back-title-long {
+    font-size: 44px;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-grade {
+    min-width: 96px;
+    padding: 6px 8px;
+    border-width: 4px;
+    border-radius: 16px;
+    flex: 0 0 auto;
+    transform: translate(0, 46px);
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-grade b { font-size: 52px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-back-grade span { font-size: 26px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-verdict { font-size: 34px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-cats { gap: 10px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-cat {
+    border-width: 4px;
+    border-radius: 16px;
+    padding: 8px;
+  }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-cat span { font-size: 26px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-cat b { font-size: 52px; }
+  .player-of-day:not(.player-of-day-compact) .pod-card .card-full-stats {
+    border-width: 4px;
+    border-radius: 18px;
+    padding: 12px 28px;
+    font-size: 38px;
+  }
   .pod-cta { justify-self: center; }
   .player-of-day-compact { grid-template-columns: minmax(0, 1fr) auto; text-align: left; gap: 12px; }
   .player-of-day-compact .pod-card { width: 132px; }
@@ -419,6 +481,23 @@ body {
     gap: 24px;
   }
   .new-player-card { width: 100%; justify-self: stretch; }
+  .new-drawing-card-back {
+    gap: 3px;
+    padding: 7px 5px;
+  }
+  .new-drawing-back-kicker { font-size: 11px; }
+  .new-drawing-card-back b {
+    font-size: 19px;
+    line-height: .95;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+  .new-drawing-card-back span:last-child {
+    font-size: 13px;
+    line-height: 1;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
 }
 .prizes-section {
   max-width: 720px; margin: 22px auto 0; padding: 18px;
@@ -1357,6 +1436,14 @@ body {
   position: absolute; inset: -4px; display: block;
   width: calc(100% + 8px); height: calc(100% + 8px); object-fit: fill;
 }
+.contest-entry-image-fallback {
+  display: grid; place-items: center; width: 48px; height: 48px;
+  border: 2px solid var(--ink); border-radius: 999px; background: var(--blue); color: #fff;
+  font-family: var(--font-display); font-size: 25px; line-height: 1;
+}
+.contest-expanded-entry-art .contest-entry-image-fallback {
+  width: 141px; height: 141px; border-width: 6px; font-size: 74px;
+}
 .contest-submitted-card-wrap.is-empty {
   display: grid; place-items: center;
   background:
@@ -1753,7 +1840,24 @@ body {
   .prizes-page {
     width: 848px;
     max-width: none;
-    zoom: .46;
+    zoom: .425;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .prizes-page .prize-bundle-preview-grid {
+    grid-template-columns: repeat(4, minmax(120px, 1fr));
+    width: 620px;
+  }
+  .prizes-page .prize-bundle-preview-grid.is-compact-bundle {
+    grid-template-columns: repeat(3, 150px);
+    width: 474px;
+  }
+  .prizes-page .prize-bundle-preview-grid.is-two-item-bundle {
+    grid-template-columns: repeat(2, 190px);
+    width: 392px;
+  }
+  .prizes-page .prize-preview-modal-bundle.is-compact-bundle-modal {
+    max-width: 760px;
   }
   .prizes-page-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1842,7 +1946,9 @@ body {
   .prize-details-page {
     width: 848px;
     max-width: none;
-    zoom: .46;
+    zoom: .47;
+    margin-left: auto;
+    margin-right: auto;
   }
   .contest-submit-band {
     grid-template-columns: minmax(230px, 280px) minmax(0, 1fr);
@@ -1864,7 +1970,7 @@ body {
   .leaderboard {
     width: 848px;
     max-width: none;
-    zoom: .42;
+    zoom: .38;
     margin-left: auto;
     margin-right: auto;
   }
@@ -1890,6 +1996,20 @@ body {
   }
   .leaderboard .player-of-day-leader-row b { font-size: 24px; }
   .leaderboard .player-of-day-leader-row strong { font-size: 32px; }
+  .leaderboard .sports-card-back { padding-bottom: 14px; }
+  .leaderboard .card-analysis-mini {
+    gap: 6px;
+    margin-bottom: 0;
+  }
+  .leaderboard .card-analysis-mini h4 { font-size: 12px; }
+  .leaderboard .card-analysis-mini ul { gap: 1px; margin-top: 2px; }
+  .leaderboard .card-analysis-mini li {
+    grid-template-columns: 10px minmax(0, 1fr);
+    column-gap: 2px;
+    font-size: 13px;
+    line-height: 1;
+  }
+  .leaderboard .card-full-stats { margin-bottom: 0; }
   .leaderboard .player-of-day-leaderboard:last-child {
     margin-bottom: 0;
   }
@@ -1900,7 +2020,7 @@ body {
   }
   .main:has(.prizes-page) {
     flex: 0 0 auto;
-    padding-bottom: 0;
+    padding-bottom: 18px;
   }
   .main:has(.prizes-page) + .site-footer {
     margin-top: 10px;
@@ -2338,9 +2458,11 @@ body {
 @media (max-width: 520px) {
   .analysis-copy { padding-right: 0; }
   .archetype-art {
-    position: static;
+    position: relative;
+    top: auto;
+    right: auto;
     aspect-ratio: 2.5 / 3.5;
-    width: min(210px, 72%);
+    width: min(140px, 44%);
     height: auto;
     margin: 6px auto 0;
     transform: none;
@@ -2424,7 +2546,7 @@ body {
   background: linear-gradient(145deg, var(--tier-start), var(--tier-mid) 58%, var(--tier-end));
 }
 .global-tier-tab.overall-tier-worst .global-tier-swatch {
-  background: linear-gradient(145deg, #b8d49b 0%, #e18b50 56%, #668c68 100%);
+  background: linear-gradient(145deg, #b8d49b 0%, #e18b50 54%, #3f9e9b 100%);
 }
 .global-tier-swatch {
   grid-row: 1 / span 2; width: 18px; height: 18px; border: 2px solid var(--ink); border-radius: 999px;
@@ -2762,13 +2884,13 @@ button.drawing-collection-item:focus-visible {
   --tier-shine: rgba(225,255,188,.25);
 }
 .card-tier-worst, .overall-tier-worst {
-  --tier-spot: rgba(91, 141, 101, .4);
+  --tier-spot: rgba(78, 145, 128, .4);
   --tier-start: #e2edd0;
   --tier-mid: #c88b62;
-  --tier-end: #71806c;
-  --tier-line: rgba(53, 87, 59, .56);
+  --tier-end: #6c8f86;
+  --tier-line: rgba(48, 88, 82, .56);
   --tier-number: #8e5137;
-  --tier-shine: rgba(158, 190, 133, .3);
+  --tier-shine: rgba(146, 198, 173, .3);
 }
 .sports-card-meta {
   display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px;
@@ -4065,5 +4187,36 @@ button.drawing-collection-item:focus-visible {
     --frame-preview-scale: .17;
     width: 44px;
     height: 62px;
+  }
+}
+
+@media (max-width: 620px) {
+  .prizes-page .modal.sprite-bundle-preview-modal {
+    width: 760px;
+    max-width: 760px;
+  }
+  .prizes-page .modal.sprite-bundle-preview-modal .prize-bundle-preview-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    width: 620px;
+    max-width: 100%;
+    gap: 12px;
+  }
+  .prizes-page .modal.sprite-bundle-preview-modal .prize-bundle-preview-item {
+    min-height: 150px;
+    padding: 12px 10px;
+    gap: 8px;
+  }
+  .prizes-page .modal.sprite-bundle-preview-modal .prize-bundle-preview-item img {
+    width: min(104px, 90%);
+    max-height: 116px;
+  }
+  .prizes-page .modal.sprite-bundle-preview-modal .prize-bundle-preview-item span:last-child {
+    font-size: 15px;
+    line-height: 1;
+  }
+  .prizes-page .modal.sprite-bundle-preview-modal .prize-bundle-preview-item .prize-frame-preview-small {
+    --frame-preview-scale: .26;
+    width: 68px;
+    height: 95px;
   }
 }
